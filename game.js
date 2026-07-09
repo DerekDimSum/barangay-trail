@@ -1170,7 +1170,7 @@ function initUI() {
   let run = null;
   let resolving = false;
   let pendingInterlude = null; // interlude shown before the event card
-  let phase = 'title';         // 'intro' | 'interlude' | 'event' | 'result'
+  let phase = 'title';         // 'title' | 'select' | 'interlude' | 'event' | 'result'
 
   /* ---- tiny WebAudio blips (no files); fails silently if blocked ---- */
   let actx = null;
@@ -1307,30 +1307,6 @@ function initUI() {
     el.classList.toggle('hidden', el.children.length === 0);
   }
 
-  function renderIntro() {
-    phase = 'intro';
-    const card = document.querySelector('.event-card');
-    card.classList.add('interlude');
-    card.classList.remove('landmark');
-    $('ev-title').textContent = '🎆 Ang Pista';
-    const p = run.passenger;
-    const promise = p ? `${p.name} wants to arrive by ${formatHour(p.desiredArrival).replace(':00', '')}. ` : '';
-    $('ev-desc').textContent = `6 AM na. Ten barangays between you and the fiesta. ${promise}Every stop costs time, kind choices cost more. Don't let any bar hit zero. Tara na!`;
-    $('ev-chips').classList.add('hidden');
-    $('ev-result').classList.add('hidden');
-    $('ev-km').classList.add('hidden');
-    $('ev-cold').classList.add('hidden');
-    $('ev-passive').classList.add('hidden');
-    renderBars(null);
-    renderHud();
-    $('choices').classList.add('hidden');
-    $('night-banner').classList.add('hidden');
-    $('cold-banner').classList.add('hidden');
-    const cont = $('btn-continue');
-    cont.textContent = 'Tara na! 🛺';
-    cont.classList.remove('hidden');
-  }
-
   /* The interlude card is a PREVIEW: chips show what's about to happen;
      bars and clock only move when the player taps Tuloy. */
   function renderInterlude(interlude) {
@@ -1450,7 +1426,6 @@ function initUI() {
 
   function continueRun() {
     if (!run) return;
-    if (phase === 'intro') { sound('tap'); beginLeg(); return; }
     if (phase === 'interlude') {
       // the tap is the moment the road's effect actually lands
       sound('tap');
@@ -1549,8 +1524,6 @@ function initUI() {
     }
   }
 
-  let introShown = false; // the fiesta framing shows once per page visit
-
   /* Every run starts at the passenger pick: 2 of 5, fresh pair per run,
      no reroll. Tapping a card IS the start of the journey. */
   function renderSelect() {
@@ -1587,10 +1560,11 @@ function initUI() {
     $('passenger-0').disabled = true;
     $('passenger-1').disabled = true;
     sound('tap');
-    $('hud-passenger').textContent = `${run.passenger.emoji} ${run.passenger.name}`;
+    // the HUD carries the passenger AND their promised hour for the whole run
+    const p = run.passenger;
+    $('hud-passenger').textContent = `${p.emoji} ${p.name} · by ${formatHour(p.desiredArrival).replace(':00', '')}`;
     show('game');
-    if (introShown) beginLeg();
-    else { introShown = true; renderIntro(); }
+    beginLeg();
   }
 
   function startGame() {
