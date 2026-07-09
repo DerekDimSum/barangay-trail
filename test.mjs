@@ -185,9 +185,9 @@ for (let i = 0; i < 500; i++) {
     ['arrived-but', state('win', { goodwill: 4 })],
     ['barangay-beloved', state('win', { goodwill: 11 })],
     ['clean-run', state('win', { coins: 8, food: 8, fuel: 8, goodwill: 8 })],
-    ['fireworks-finish', state('win', { fuel: 5 }, { hour: 19 })],
-    ['last-dance-crew', state('win', { fuel: 5 }, { hour: 22 })],
-    ['dishwashing-committee', state('win', { fuel: 5 }, { hour: 25 })],
+    ['promise-kept', state('win', { fuel: 5 }, { hour: 17, passenger: PASSENGERS.find(p => p.id === 'lola-cora') })],
+    ['promise-bent', state('win', { fuel: 5 }, { hour: 19, passenger: PASSENGERS.find(p => p.id === 'lola-cora') })],
+    ['promise-very-bent', state('win', { fuel: 5 }, { hour: 25, passenger: PASSENGERS.find(p => p.id === 'lola-cora') })],
   ];
   ok(CASES.length === ENDINGS.length, 'ending coverage table out of sync: ' + CASES.length + ' vs ' + ENDINGS.length);
   for (const [id, s] of CASES) {
@@ -198,6 +198,20 @@ for (let i = 0; i < 500; i++) {
     ok(e.id && e.name && e.emoji && e.text && e.share, 'ending ' + e.id + ' missing fields');
     ok(e.text.length <= 160, 'ending ' + e.id + ' text too long for iPhone SE (' + e.text.length + ')');
   }
+  // every passenger can keep their promise (kept must be resolvable per passenger),
+  // and a passengerless win still falls back safely
+  for (const p of PASSENGERS) {
+    const got = resolveEnding(state('win', { fuel: 5 }, { hour: p.desiredArrival, passenger: p }));
+    ok(got.id === 'promise-kept', p.id + ' cannot reach promise-kept (got ' + got.id + ')');
+  }
+  ok(resolveEnding(state('win', { fuel: 5 }, { hour: 18 })).id === 'promise-very-bent', 'null-passenger win did not fall back');
+}
+
+// 9b2. Promise data: every passenger has a desired arrival and shows it on the card
+for (const p of PASSENGERS) {
+  ok(typeof p.desiredArrival === 'number' && p.desiredArrival > START_HOUR && p.desiredArrival <= 24, p.id + ' bad desiredArrival');
+  const hourLabel = formatHour(p.desiredArrival).replace(':00', '');
+  ok(typeof p.promiseText === 'string' && p.promiseText.includes(hourLabel), p.id + ' promiseText missing its hour (' + hourLabel + ')');
 }
 
 // 9c. Passenger epilogues: both variants present on every passenger

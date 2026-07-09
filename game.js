@@ -62,8 +62,9 @@ const START_HOUR = 6;        // you leave at 6 AM
 const LEG_HOURS = 1;         // base travel time per leg
 const NIGHT_HOUR = 17;       // gabi begins; the world starts closing
 const NIGHT_GOODWILL = 8;    // goodwill at/above this keeps doors open at night
-const FIREWORKS_HOUR = 20;   // arrive before this = best win
-const LAST_DANCE_HOUR = 23;  // arrive before this = decent win
+const FIREWORKS_HOUR = 20;   // universal score bonus cutoff (+150)
+const LAST_DANCE_HOUR = 23;  // universal score bonus cutoff (+75)
+const PROMISE_GRACE_HOURS = 3; // hours past desiredArrival = "Promise Bent"
 const INTERLUDE_CHANCE = 0.7;
 
 const RES_KEYS = ['coins', 'food', 'fuel', 'goodwill'];
@@ -75,14 +76,20 @@ const RES_META = {
 };
 
 /* The passenger pool: who you promised to bring to the fiesta.
-   v0.2 = identity only — no passives, no stat changes. Each run offers
-   2 of these 5 (drawn from the run's RNG stream); the player picks one. */
+   Each run offers 2 of these 5 (drawn from the run's RNG stream); the
+   player picks one. `desiredArrival` is that passenger's PROMISED hour
+   (24h) — a soft promise, never a loss condition. Arriving by it earns
+   the "Promise Kept" ending; within PROMISE_GRACE_HOURS, "Promise
+   Bent"; later, "Promise Very Bent". `promiseText` shows the promise
+   on the selection card. */
 const PASSENGERS = [
   {
     id: 'tita-baby', name: 'Tita Baby', emoji: '👒',
     blurb: 'Knows everyone. Brings snacks. Will absolutely judge your choices.', tag: 'Social safety',
     start: {},
-    passiveText: 'Once per run, 💛 refuses to hit zero — may tinatawagan siya. Laging may tinatawagan.',
+    desiredArrival: 18,
+    promiseText: '🕕 Wants to arrive by 6 PM. May inspections pa siya: food, chairs, your choices.',
+    passiveText: 'Once per run, 💛 refuses to hit zero. May tinatawagan siya. Laging may tinatawagan.',
     epilogueWin: 'Tita Baby steps out first, waves like she planned everything, and somehow everyone believes her.',
     epilogueLoss: 'Tita Baby says “Okay lang,” in the tone that means this will be discussed later.',
   },
@@ -90,6 +97,8 @@ const PASSENGERS = [
     id: 'kuya-jun', name: 'Kuya Jun', emoji: '🧢',
     blurb: 'Has a cousin nearby. Somehow knows a shortcut.', tag: 'Diskarte route',
     start: {},
+    desiredArrival: LAST_DANCE_HOUR,
+    promiseText: '🕚 Says anything before 11 PM is “on time.” Suspicious, but useful.',
     passiveText: 'Slow choices (2+ extra hrs) take 1 hour less. Alam niya ang daan. Daw.',
     epilogueWin: 'Kuya Jun says the route was obvious. It was not obvious.',
     epilogueLoss: 'Kuya Jun insists the shortcut was correct. The road respectfully disagrees.',
@@ -98,7 +107,9 @@ const PASSENGERS = [
     id: 'lola-cora', name: 'Lola Cora', emoji: '👵',
     blurb: 'Everyone respects her. Everyone also wants her to sit, eat, and rest.', tag: 'Respect route',
     start: { goodwill: 2, food: -3 },
-    passiveText: 'Starts +2 💛 −3 🍚. No cold shoulder, ever — and doors stay open at night.',
+    desiredArrival: NIGHT_HOUR,
+    promiseText: '🕔 Wants to arrive before dark, 5 PM. She does not do night travel.',
+    passiveText: 'Starts +2 💛 −3 🍚. No cold shoulder, ever. Doors stay open at night too.',
     epilogueWin: 'Lola Cora steps out and the whole plaza softens. Suddenly, you are forgiven for everything.',
     epilogueLoss: 'Lola Cora says, “Okay lang, apo.” Somehow that makes it worse and better.',
   },
@@ -106,6 +117,8 @@ const PASSENGERS = [
     id: 'bunso-nico', name: 'Bunso Nico', emoji: '🧒',
     blurb: 'Small passenger. Big snack requirements.', tag: 'Cute chaos',
     start: { food: -2, coins: -1 },
+    desiredArrival: 19,
+    promiseText: '🕖 Wants to arrive by 7 PM. Games and prizes muna bago ang sleepy chaos.',
     passiveText: 'Starts −2 🍚 −1 🪙 (snacks). 💛 costs 1 lighter (walang galit kay Nico), pero 🍚 gains 1 lighter din.',
     epilogueWin: 'Bunso Nico announces the journey was easy. He was asleep for half of it.',
     epilogueLoss: 'Bunso Nico asks if the failed trip still includes snacks. Priorities remain strong.',
@@ -114,7 +127,9 @@ const PASSENGERS = [
     id: 'cousin-jessa', name: 'Cousin Jessa', emoji: '🤳',
     blurb: 'Already posting the journey. The barangay is watching.', tag: 'Receipts route',
     start: { coins: 1 },
-    passiveText: 'Starts +1 🪙 (ad revenue). 💛 costs are 1 heavier — pero +250 score pag nakarating.',
+    desiredArrival: FIREWORKS_HOUR,
+    promiseText: '🕗 Wants to arrive by 8 PM sharp. She needs fireworks content. Obviously.',
+    passiveText: 'Starts +1 🪙 (ad revenue). 💛 costs are 1 heavier, pero +250 score pag nakarating.',
     epilogueWin: 'Cousin Jessa posts the arrival before you even park. Caption already has sparkle emojis.',
     epilogueLoss: 'Cousin Jessa says she will not post the failure. She is lying gently.',
   },
@@ -131,11 +146,11 @@ const DECK = [
   {
     id: 'sari-sari',
     title: "Aling Nena's Sari-Sari",
-    description: "The sari-sari store has cold drinks, chips — and a listahan with your name on it.",
+    description: "The sari-sari store has cold drinks, chips, and a listahan with your name on it.",
     boostWhen: { res: 'food', atMost: 5 },
     choiceA: { label: 'Buy snacks, cash', effects: { coins: -4, food: 1 } },
     resultA: 'Chips, sardinas, saging chips. Busog agad!',
-    choiceB: { label: '“Lista muna po”', effects: { goodwill: -4, food: 1 }, sets: 'utang' },
+    choiceB: { label: '“Charge it, utang muna”', effects: { goodwill: -4, food: 1 }, sets: 'utang' },
     resultB: 'Aling Nena sighs and adds your name to the listahan. Again.',
   },
   {
@@ -144,7 +159,7 @@ const DECK = [
     description: 'The trike driver quotes “special trip” price. He also knows your tita.',
     choiceA: { label: 'Pay the special rate', effects: { coins: -4, fuel: 2 } },
     resultA: 'Smooth ride. Kuya even waits while you buy load.',
-    choiceB: { label: '“Utang muna, kuya?”', effects: { goodwill: -4, fuel: 1 }, sets: 'utang' },
+    choiceB: { label: '“Pay later, utang na?”', effects: { goodwill: -4, fuel: 1 }, sets: 'utang' },
     resultB: 'Kuya nods slowly. “Sabihin mo kay tita, ha.”',
   },
   {
@@ -152,14 +167,14 @@ const DECK = [
     title: 'Jeepney Rush',
     description: 'The jeepney line snakes around the block. A lola stands behind you, plastic bags everywhere.',
     choiceA: { label: 'Keep your spot', effects: { food: -4, fuel: 1 } },
-    resultA: 'Packed jeep, elbows everywhere — but your tank gets a rest.',
+    resultA: 'Packed jeep, elbows everywhere. But your tank gets a rest.',
     choiceB: { label: 'Lola goes first + baon', effects: { food: -4, goodwill: 1, time: 1 } },
     resultB: 'The whole line smiles at you. Lodi!',
   },
   {
     id: 'palengke',
     title: 'Palengke Day',
-    description: 'Suki discounts at the palengke — and your extra bananas could sell fast.',
+    description: 'Suki discounts at the palengke, and your extra bananas could sell fast.',
     boostWhen: { res: 'food', atMost: 5 },
     choiceA: { label: 'Stock up, suki price', effects: { coins: -4, food: 1 } },
     resultA: 'Extra kamatis, libreng kalamansi. Suki perks!',
@@ -217,7 +232,7 @@ const DECK = [
     choiceB: { label: '“Diet po ako” + dash', effects: { fuel: 1, goodwill: -4 } },
     resultB: "You beat the traffic. Tita's hurt gasp haunts you.",
     choiceC: {
-      label: '“Pabaon na lang po”', effects: { food: 2, goodwill: -1 },
+      label: '“Just baon to go, po”', effects: { food: 2, goodwill: -1 },
       requires: { res: 'food', atMost: 4 }, unlock: '🍚 low',
     },
     resultC: 'Tita loads a bag of baon in ninety seconds flat. “Text mo ako pagdating!”',
@@ -237,7 +252,7 @@ const DECK = [
     description: 'Kapitan flags you down: “Pahatid naman ng mga monoblock sa plaza?”',
     choiceA: { label: 'Haul the chairs', effects: { fuel: -4, goodwill: 1, time: 2 } },
     resultA: 'Kapitan salutes. “Solid ka, iho.”',
-    choiceB: { label: '“May lakad pa po ako”', effects: { goodwill: -4 } },
+    choiceB: { label: '“Sorry, may lakad po”', effects: { goodwill: -4 } },
     resultB: 'Kapitan nods slowly. The tambays take notes.',
   },
   {
@@ -261,7 +276,7 @@ const DECK = [
       label: 'Suki lane, please', effects: { food: 2, goodwill: -1 },
       requires: { res: 'goodwill', atLeast: 8 }, unlock: '💛 8+',
     },
-    resultC: 'The crowd waves you forward — “Suki privileges!” — and nobody minds.',
+    resultC: 'The crowd waves you forward. “Suki privileges,” they say. Nobody minds.',
   },
   {
     id: 'family-group-chat',
@@ -275,7 +290,7 @@ const DECK = [
   {
     id: 'road-detour',
     title: 'Roadwork Ahead',
-    description: "Roadwork blocks the highway. Long detour — or Mang Ben's private shortcut lot.",
+    description: "Roadwork blocks the highway. Long detour, or Mang Ben's private shortcut lot.",
     choiceA: { label: 'Take the long way', effects: { fuel: -4, time: 2 } },
     resultA: 'Long but peaceful. Nice carabao views naman.',
     choiceB: { label: 'Sweet-talk Mang Ben', effects: { fuel: -1, goodwill: -3 } },
@@ -311,7 +326,7 @@ const DECK = [
     description: "Your kapitbahay's trike broke down. He needs gas money, “hanggang sweldo lang, promise.”",
     choiceA: { label: 'Lend the money', effects: { coins: -4, goodwill: 2 }, sets: 'lent-money' },
     resultA: '“Isang tulog na lang, bayad agad!” He means it. Probably.',
-    choiceB: { label: '“Gipit din ako, pare”', effects: { goodwill: -4 } },
+    choiceB: { label: '“Broke din ako, pare”', effects: { goodwill: -4 } },
     resultB: 'He understands naman. Pero malamig na ang good morning.',
     choiceC: {
       label: 'Cover it, stay to help', effects: { coins: -4, goodwill: 3, time: 1 }, sets: 'lent-money',
@@ -358,7 +373,7 @@ const DECK = [
   {
     id: 'market-discount',
     title: 'Last Price Na',
-    description: 'Closing time sa talipapa. “Last price na, suki!” Everything must go.',
+    description: 'Closing time sa palengke. “Last price na, suki!” Everything must go.',
     boostWhen: { res: 'food', atMost: 5 },
     choiceA: { label: 'Take the bundle', effects: { coins: -4, food: 2 } },
     resultA: 'Bags of gulay and tuyo. Panalo ang hapunan.',
@@ -435,7 +450,7 @@ const DECK = [
     description: "Aling Rosa flags you down: one small padala for her cousin sa plaza. 'Maliit lang, promise.'",
     choiceA: { label: 'Load the padala', effects: { fuel: -4, goodwill: 1, time: 1 } },
     resultA: 'It is not maliit. The trike sits lower. Aling Rosa waves like a saint.',
-    choiceB: { label: '“Puno na kami po”', effects: { goodwill: -3 } },
+    choiceB: { label: '“Sorry, puno na kami”', effects: { goodwill: -3 } },
     resultB: 'Aling Rosa says nothing. Her eyebrows say everything.',
   },
   {
@@ -493,15 +508,15 @@ const DECK = [
 const INTERLUDES = [
   { id: 'carabao', text: 'A carabao parade owns the road. Nothing to do but wait, and wave.', effects: { time: 1 } },
   { id: 'baha', text: "Last night's ulan flooded the low road. Single lane, inch by inch.", effects: { time: 1, fuel: -1 } },
-  { id: 'fresh-asphalt', text: 'Fresh asphalt?! Sino nagpagawa?? Dios mabalos, congressman. You make up an hour.', effects: { time: -1 } },
-  { id: 'bagsak-presyo', text: 'Roadside bagsak-presyo stand — a whole buwig of saging for barya.', effects: { coins: -1, food: 1 } },
+  { id: 'fresh-asphalt', text: 'Fresh asphalt?! Grabe, may nag-ayos talaga. You make up an hour.', effects: { time: -1 } },
+  { id: 'bagsak-presyo', text: 'Roadside bagsak-presyo stand. A whole buwig of saging for barya.', effects: { coins: -1, food: 1 } },
   { id: 'tita-text', text: 'Tita texts: “Ingat ka ha. May baon ka ba?” You smile for the next two barangays.', effects: { goodwill: 1 } },
   { id: 'flat-tire', text: 'Pssssst. Flat tire. The spare holds... for now.', effects: { time: 1, fuel: -1 } },
   { id: 'checkpoint', text: 'Checkpoint. “Saan po tayo?” Routine lang, but the line is long.', effects: { time: 1 } },
   { id: 'street-dance', text: 'A street-dance rehearsal blocks the road. You watch the whole thing. Worth it.', effects: { time: 1 } },
   { id: 'jeepney-draft', text: 'You draft behind a speeding jeepney blasting road-trip anthems. Libreng hangin, libreng oras!', effects: { time: -1 } },
-  { id: 'wallet-save', text: 'Your wallet nearly flies off at a bump — a bystander catches it. You tip him your chips; he refuses twice, accepts on the third.', effects: { food: -1, goodwill: 2 } },
-  { id: 'balik-bayad', text: 'A familiar trike pulls up — the kapitbahay! “Sabi ko babayaran kita!” He pays. With interest: one warm pandesal.', effects: { coins: 2 }, requires: { flag: 'lent-money' } },
+  { id: 'wallet-save', text: 'Your wallet nearly flies off at a bump. A bystander catches it. You tip him your chips; he refuses twice, accepts on the third.', effects: { food: -1, goodwill: 2 } },
+  { id: 'balik-bayad', text: 'A familiar trike pulls up. It’s the kapitbahay! “Sabi ko babayaran kita!” He pays. With interest: one warm pandesal.', effects: { coins: 2 }, requires: { flag: 'lent-money' } },
   { id: 'utang-rumor', text: 'Word travels on the trail: “May lista ka kay Aling Nena.” The tinderas’ smiles thin a little.', effects: { goodwill: -1 }, requires: { flag: 'utang' } },
   { id: 'liga-fans', text: 'Kids reenact your buzzer-beater as you pass. You stop for exactly one (1) photo. Okay, three.', effects: { goodwill: 1 }, requires: { flag: 'liga-hero' } },
   { id: 'lola-pandesal', text: "Someone's lola flags you down and presses warm pandesal into your hands. “Para sa biyahe. Kilala kita, mabait ka.”", effects: { food: 2 }, requires: { res: 'goodwill', atLeast: 9 } },
@@ -542,7 +557,7 @@ const LANDMARKS = {
     id: 'landmark-huling-kanto',
     landmark: true,
     title: 'Ang Huling Kanto',
-    description: 'You can hear the banda warming up! One last stretch — the plaza glows sa malayo.',
+    description: 'You can hear the banda warming up! One last stretch, and the plaza glows sa malayo.',
     choiceA: { label: 'Diretso, steady lang', effects: { food: -3, fuel: -1, time: 1 } },
     resultA: 'You cruise in with the caravan of last-minute lechon deliveries.',
     choiceB: {
@@ -558,8 +573,8 @@ const LANDMARKS = {
   },
 };
 
-const COLD_LINE = '🥶 Malamig ang trato — with goodwill this low, people stop going the extra mile (bonuses reduced).';
-const NIGHT_LINE = '🌙 Gabi na — sarado na ang mga tindahan. Bonuses reduced... unless people love you.';
+const COLD_LINE = '🥶 Malamig ang trato. People stop going the extra mile for you.';
+const NIGHT_LINE = '🌙 Gabi na. Sarado na ang mga tindahan... unless people love you.';
 
 /* NAMED ENDINGS — every run resolves to exactly one story identity.
    Order IS priority: first match wins. Losses first (mutually exclusive
@@ -583,13 +598,13 @@ const ENDINGS = [
   {
     id: 'supper-retreat', name: 'Supper Retreat', emoji: '🍽️',
     when: (r) => r.outcome === 'lose' && r.deadResource === 'food',
-    text: 'You are too hungry to continue. The fiesta can wait — may kanin sa bahay, and honestly, tama naman. You turn back in time for supper.',
+    text: 'You are too hungry to continue. The fiesta can wait. May kanin sa bahay, and honestly, tama naman. You turn back in time for supper.',
     share: 'Umuwi para sa hapunan. Walang regrets. Konting regrets.',
   },
   {
     id: 'no-pamasahe', name: 'No Pamasahe, No Problem?', emoji: '🪙',
     when: (r) => r.outcome === 'lose' && r.deadResource === 'coins',
-    text: 'The wallet gives up before you do. No fare, no shortcut — just the long, character-building way home.',
+    text: 'The wallet gives up before you do. No fare, no shortcut. Just a long walk home, and a lot of time to think.',
     share: 'Naubusan ng pamasahe. Character development daw.',
   },
   {
@@ -608,13 +623,13 @@ const ENDINGS = [
   {
     id: 'utang-na-loob-economy', name: 'Utang na Loob Economy', emoji: '💛',
     when: (r) => r.outcome === 'win' && r.res.coins <= 2 && r.res.goodwill >= 10,
-    text: 'You arrive broke and beloved. Every peso you gave away came back as helping hands — the wallet is empty, the sidecar is full.',
+    text: 'You arrive broke and loved. Everything you gave away came back, just not as money. Empty wallet, full sidecar.',
     share: 'Zero pesos, infinite utang na loob 💛',
   },
   {
     id: 'solo-speedrun-villain', name: 'Solo Speedrun Villain', emoji: '😈',
     when: (r) => r.outcome === 'win' && r.hour < FIREWORKS_HOUR && r.res.goodwill <= 4,
-    text: 'Incredible time. The whole barangay watched you make it — nobody waves. The fireworks are great; malamig lang ang tanggap.',
+    text: 'Incredible time. The whole barangay watched you make it, and nobody waves. The fireworks are great. The welcome is cold.',
     share: 'Umabot ako. Ako lang talaga. 😈',
   },
   {
@@ -633,7 +648,7 @@ const ENDINGS = [
   {
     id: 'rich-walang-hatid', name: 'Rich but Walang Hatid', emoji: '💸',
     when: (r) => r.outcome === 'win' && r.res.coins >= 8 && r.res.goodwill <= 4,
-    text: 'You arrive with money intact and bridges lightly burned. Kayang bumili ng lechon, pero walang nagse-save ng upuan.',
+    text: 'You arrive with money intact and bridges lightly burned. You can afford the lechon. Nobody saved you a seat.',
     share: 'May pera, walang naghihintay 💸',
   },
   {
@@ -645,7 +660,7 @@ const ENDINGS = [
   {
     id: 'barangay-beloved', name: 'Barangay Beloved', emoji: '👑',
     when: (r) => r.outcome === 'win' && r.res.goodwill >= 11,
-    text: 'The plaza opens for you like family. Everyone you helped today is here — and every single one saved you a seat.',
+    text: 'The plaza opens for you like family. Everyone you helped today is here, and every single one saved you a seat.',
     share: 'Buong barangay, kakampi ko 👑',
   },
   {
@@ -660,24 +675,24 @@ const ENDINGS = [
     text: 'You roll in on fumes, barya, crumbs, at dasal. One biscuit stands between you and disaster. It has seen things.',
     share: 'Survived with one (1) biscuit 🍪',
   },
-  // ---- win defaults (arrival tier) ----
+  // ---- win defaults: the promise tier (did you keep your word?) ----
   {
-    id: 'fireworks-finish', name: 'Fireworks Finish', emoji: '🎆',
-    when: (r) => r.outcome === 'win' && r.hour < FIREWORKS_HOUR,
-    text: 'You pull in just as the sky explodes. Perfect timing — everyone assumes you planned it. Sige, credit na ’yan.',
-    share: 'Sakto sa fireworks 🎆',
+    id: 'promise-kept', name: 'Promise Kept', emoji: '🤝',
+    when: (r) => r.outcome === 'win' && r.passenger && r.hour <= r.passenger.desiredArrival,
+    text: 'You said you would get them there, and you did. On time pa. Nothing to explain, nothing to defend. Rare feeling.',
+    share: 'Promise kept. On time kami 🤝',
   },
   {
-    id: 'last-dance-crew', name: 'Last Dance Crew', emoji: '🪩',
-    when: (r) => r.outcome === 'win' && r.hour < LAST_DANCE_HOUR,
-    text: 'The fireworks are done, but the banda is still on. You arrive exactly in time for the good part: the dance floor.',
-    share: 'Late pero sakto sa last dance 🪩',
+    id: 'promise-bent', name: 'Promise Bent', emoji: '😅',
+    when: (r) => r.outcome === 'win' && r.passenger && r.hour <= r.passenger.desiredArrival + PROMISE_GRACE_HOURS,
+    text: 'You arrive later than promised. Nobody says anything. Everybody noticed. The story now has an “actually...” section.',
+    share: 'Medyo late, pero nakarating 😅',
   },
   {
-    id: 'dishwashing-committee', name: 'Dishwashing Committee', emoji: '🧽',
+    id: 'promise-very-bent', name: 'Promise Very Bent', emoji: '🫠',
     when: (r) => r.outcome === 'win',
-    text: 'You arrive as the plates do. Welcome to the most honorable committee sa buong fiesta. Tita saved you lechon.',
-    share: 'Officially sa hugasan committee 🧽',
+    text: 'You got them there. Technically. The promised hour is a distant memory, and this arrival will be retold at every reunion.',
+    share: 'Nakarating naman... eventually 🫠',
   },
 ];
 
@@ -1295,8 +1310,9 @@ function initUI() {
     card.classList.add('interlude');
     card.classList.remove('landmark');
     $('ev-title').textContent = '🎆 Ang Pista';
-    const who = run.passenger ? `Kasama mo si ${run.passenger.name} — ihatid mo siya nang buo. ` : '';
-    $('ev-desc').textContent = `You roll out at 6 AM — ten barangays between you and the fiesta. ${who}Every stop takes an hour; the kind choices take more. Dark falls at 5 PM and the road gets mean... unless people love you. Fireworks at 8. Keep every bar alive. Tara na!`;
+    const p = run.passenger;
+    const promise = p ? `${p.name} wants to arrive by ${formatHour(p.desiredArrival).replace(':00', '')}. ` : '';
+    $('ev-desc').textContent = `6 AM na. Ten barangays between you and the fiesta. ${promise}Every stop costs time, kind choices cost more. Don't let any bar hit zero. Tara na!`;
     $('ev-chips').classList.add('hidden');
     $('ev-result').classList.add('hidden');
     $('ev-km').classList.add('hidden');
@@ -1374,7 +1390,7 @@ function initUI() {
     if (night) {
       const loved = run.res.goodwill >= NIGHT_GOODWILL;
       nightEl.textContent = loved
-        ? '🌙 Gabi na — pero may nag-iwan ng ilaw para sa’yo 💛 (no penalty)'
+        ? '🌙 Gabi na, pero may nag-iwan ng ilaw para sa’yo 💛'
         : NIGHT_LINE;
       nightEl.classList.toggle('loved', loved);
     }
@@ -1407,9 +1423,9 @@ function initUI() {
       const band = timeBand(run.hour);
       const stopsLeft = TOTAL_STOPS - run.stop;
       const detail = band === 'gabi'
-        ? 'gabi na — ingat sa daan'
+        ? 'gabi na, ingat sa daan'
         : `dark in ${NIGHT_HOUR - run.hour} hrs, ${stopsLeft} stop${stopsLeft === 1 ? '' : 's'} to go`;
-      kmEl.textContent = `${bandEmoji(band)} ${formatHour(run.hour)} — ${detail}`;
+      kmEl.textContent = `${bandEmoji(band)} ${formatHour(run.hour)} · ${detail}`;
       kmEl.className = 'ev-km ' + (band === 'umaga' ? 'day' : band === 'hapon' ? 'dusk' : 'night');
     }
 
@@ -1486,9 +1502,9 @@ function initUI() {
 
     shareText = [
       '🛺 Barangay Trail: Road to Fiesta',
-      `${ending.emoji} ${ending.name} — ${ending.share}`,
+      `${ending.emoji} ${ending.name} · ${ending.share}`,
       run.passenger ? `${run.passenger.emoji} Kasama: ${run.passenger.name}` : null,
-      `🏆 Fiesta Score: ${s.score.toLocaleString('en-US')} — ${tier} · beat ~${pct}% of travelers`,
+      `🏆 Fiesta Score: ${s.score.toLocaleString('en-US')} · ${tier} · beat ~${pct}% of travelers`,
       `${s.survived}/${TOTAL_STOPS} stops · ${won ? `arrived ${clock}` : `stranded ${clock}`} · 🪙${run.res.coins} 🍚${run.res.food} ⛽${run.res.fuel} 💛${run.res.goodwill}`,
       'Kaya mo ba? 🎉',
     ].filter(Boolean).join('\n');
@@ -1544,6 +1560,7 @@ function initUI() {
       btn.querySelector('.passenger-emoji').textContent = p.emoji;
       btn.querySelector('.passenger-name').textContent = p.name;
       btn.querySelector('.passenger-blurb').textContent = p.blurb;
+      btn.querySelector('.passenger-promise').textContent = p.promiseText;
       btn.querySelector('.passenger-passive').textContent = p.passiveText;
       btn.querySelector('.passenger-tag').textContent = p.tag;
     }
