@@ -80,56 +80,59 @@ const RES_META = {
    player picks one. `desiredArrival` is that passenger's PROMISED hour
    (24h) — a soft promise, never a loss condition. Arriving by it earns
    the "Promise Kept" ending; within PROMISE_GRACE_HOURS, "Promise
-   Bent"; later, "Promise Very Bent". `promiseText` shows the promise
-   on the selection card. */
+   Bent"; later, "Promise Very Bent".
+   The selection card is triaged for a fast read: `blurb` (one-line
+   vibe), `promiseChip` (the arrival goal, shown as a pill and always
+   containing its hour), start-modifier ± chips derived from `start`,
+   and `passiveShort` (the ongoing effect in one short line). */
 const PASSENGERS = [
   {
     id: 'tita-baby', name: 'Tita Baby', emoji: '👒',
-    blurb: 'Knows everyone. Brings snacks. Will absolutely judge your choices.', tag: 'Social safety',
+    blurb: 'Judges your every choice.',
     start: {},
     desiredArrival: 18,
-    promiseText: '🕕 Wants to arrive by 6 PM. May inspections pa siya: food, chairs, your choices.',
-    passiveText: 'Once per run, 💛 refuses to hit zero. May tinatawagan siya. Laging may tinatawagan.',
+    promiseChip: 'By 6 PM',
+    passiveShort: '💛 can’t hit zero, once per run',
     epilogueWin: 'Tita Baby steps out first, waves like she planned everything, and somehow everyone believes her.',
     epilogueLoss: 'Tita Baby says “Okay lang,” in the tone that means this will be discussed later.',
   },
   {
     id: 'kuya-jun', name: 'Kuya Jun', emoji: '🧢',
-    blurb: 'Has a cousin nearby. Somehow knows a shortcut.', tag: 'Diskarte route',
+    blurb: 'Knows a shortcut. Allegedly.',
     start: {},
     desiredArrival: LAST_DANCE_HOUR,
-    promiseText: '🕚 Says anything before 11 PM is “on time.” Suspicious, but useful.',
-    passiveText: 'Slow choices (2+ extra hrs) take 1 hour less. Alam niya ang daan. Daw.',
+    promiseChip: 'By 11 PM, chill',
+    passiveShort: 'Slow trips take 1 hour less',
     epilogueWin: 'Kuya Jun says the route was obvious. It was not obvious.',
     epilogueLoss: 'Kuya Jun insists the shortcut was correct. The road respectfully disagrees.',
   },
   {
     id: 'lola-cora', name: 'Lola Cora', emoji: '👵',
-    blurb: 'Everyone respects her. Everyone also wants her to sit, eat, and rest.', tag: 'Respect route',
+    blurb: 'Respected. Needs her rest.',
     start: { goodwill: 2, food: -3 },
     desiredArrival: NIGHT_HOUR,
-    promiseText: '🕔 Wants to arrive before dark, 5 PM. She does not do night travel.',
-    passiveText: 'Starts +2 💛 −3 🍚. No cold shoulder, ever. Doors stay open at night too.',
+    promiseChip: 'Before dark, 5 PM',
+    passiveShort: 'People help her, even at night',
     epilogueWin: 'Lola Cora steps out and the whole plaza softens. Suddenly, you are forgiven for everything.',
     epilogueLoss: 'Lola Cora says, “Okay lang, apo.” Somehow that makes it worse and better.',
   },
   {
     id: 'bunso-nico', name: 'Bunso Nico', emoji: '🧒',
-    blurb: 'Small passenger. Big snack requirements.', tag: 'Cute chaos',
+    blurb: 'Tiny. Eats constantly.',
     start: { food: -2, coins: -1 },
     desiredArrival: 19,
-    promiseText: '🕖 Wants to arrive by 7 PM. Games and prizes muna bago ang sleepy chaos.',
-    passiveText: 'Starts −2 🍚 −1 🪙 (snacks). 💛 costs 1 lighter (walang galit kay Nico), pero 🍚 gains 1 lighter din.',
+    promiseChip: 'By 7 PM',
+    passiveShort: '💛 costs 1 less (forgiving)',
     epilogueWin: 'Bunso Nico announces the journey was easy. He was asleep for half of it.',
     epilogueLoss: 'Bunso Nico asks if the failed trip still includes snacks. Priorities remain strong.',
   },
   {
     id: 'cousin-jessa', name: 'Cousin Jessa', emoji: '🤳',
-    blurb: 'Already posting the journey. The barangay is watching.', tag: 'Receipts route',
+    blurb: 'Posting the whole trip.',
     start: { coins: 1 },
     desiredArrival: FIREWORKS_HOUR,
-    promiseText: '🕗 Wants to arrive by 8 PM sharp. She needs fireworks content. Obviously.',
-    passiveText: 'Starts +1 🪙 (ad revenue). 💛 costs are 1 heavier, pero +250 score pag nakarating.',
+    promiseChip: 'By 8 PM sharp',
+    passiveShort: '+250 score, but 💛 costs more',
     epilogueWin: 'Cousin Jessa posts the arrival before you even park. Caption already has sparkle emojis.',
     epilogueLoss: 'Cousin Jessa says she will not post the failure. She is lying gently.',
   },
@@ -1560,9 +1563,20 @@ function initUI() {
       btn.querySelector('.passenger-emoji').textContent = p.emoji;
       btn.querySelector('.passenger-name').textContent = p.name;
       btn.querySelector('.passenger-blurb').textContent = p.blurb;
-      btn.querySelector('.passenger-promise').textContent = p.promiseText;
-      btn.querySelector('.passenger-passive').textContent = p.passiveText;
-      btn.querySelector('.passenger-tag').textContent = p.tag;
+      btn.querySelector('.passenger-promise').textContent = `🕐 ${p.promiseChip}`;
+      // start-modifier chips, only where a stat actually changes
+      const statsEl = btn.querySelector('.passenger-stats');
+      statsEl.innerHTML = '';
+      const mods = RES_KEYS.filter((k) => p.start[k]);
+      for (const k of mods) {
+        const v = p.start[k];
+        const chip = document.createElement('span');
+        chip.className = `stat-chip ${v > 0 ? 'up' : 'down'}`;
+        chip.textContent = `${RES_META[k].emoji}${v > 0 ? '+' : '−'}${Math.abs(v)}`;
+        statsEl.appendChild(chip);
+      }
+      statsEl.classList.toggle('hidden', mods.length === 0);
+      btn.querySelector('.passenger-passive').textContent = p.passiveShort;
     }
     show('select');
   }

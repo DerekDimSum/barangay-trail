@@ -147,7 +147,7 @@ for (let i = 0; i < 5000; i++) {
 // 9. Passenger layer (v0.2): pool integrity, pair invariants, seed determinism, no gameplay effect
 ok(PASSENGERS.length === 5, 'passenger pool has ' + PASSENGERS.length);
 ok(new Set(PASSENGERS.map(p => p.id)).size === 5, 'duplicate passenger ids');
-for (const p of PASSENGERS) ok(p.id && p.name && p.emoji && p.blurb && p.tag, 'passenger ' + p.id + ' missing fields');
+for (const p of PASSENGERS) ok(p.id && p.name && p.emoji && p.blurb && p.promiseChip && p.passiveShort, 'passenger ' + p.id + ' missing fields');
 for (let i = 0; i < 500; i++) {
   const run = newRun();
   ok(run.passenger === null, 'passenger preselected');
@@ -211,7 +211,7 @@ for (let i = 0; i < 500; i++) {
 for (const p of PASSENGERS) {
   ok(typeof p.desiredArrival === 'number' && p.desiredArrival > START_HOUR && p.desiredArrival <= 24, p.id + ' bad desiredArrival');
   const hourLabel = formatHour(p.desiredArrival).replace(':00', '');
-  ok(typeof p.promiseText === 'string' && p.promiseText.includes(hourLabel), p.id + ' promiseText missing its hour (' + hourLabel + ')');
+  ok(typeof p.promiseChip === 'string' && p.promiseChip.includes(hourLabel), p.id + ' promiseChip missing its hour (' + hourLabel + ')');
 }
 
 // 9c. Passenger epilogues: both variants present on every passenger
