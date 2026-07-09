@@ -24,6 +24,26 @@
         <button id="btn-start" class="big-btn">Tara na! 🎉</button>
       </section>
 
+      <!-- PASSENGER SELECT -->
+      <section id="screen-select" class="screen">
+        <h1 class="game-title small">Sino ang ihahatid mo?</h1>
+        <p class="select-sub">The group chat gave you two passengers. Choose one. No backsies.</p>
+        <div class="passenger-cards">
+          <button id="passenger-0" class="passenger-card">
+            <span class="passenger-emoji"></span>
+            <span class="passenger-name"></span>
+            <span class="passenger-blurb"></span>
+            <span class="passenger-tag"></span>
+          </button>
+          <button id="passenger-1" class="passenger-card">
+            <span class="passenger-emoji"></span>
+            <span class="passenger-name"></span>
+            <span class="passenger-blurb"></span>
+            <span class="passenger-tag"></span>
+          </button>
+        </div>
+      </section>
+
       <!-- GAME -->
       <section id="screen-game" class="screen">
         <header class="hud">
@@ -33,6 +53,7 @@
             <span class="trail-trike" aria-hidden="true">🛺</span>
             <span class="trail-goal" aria-hidden="true">🎆</span>
           </div>
+          <div id="hud-passenger"></div>
         </header>
         <div id="daylight-label" class="daylight-label ok">☀️ 11 hrs of daylight · 10 stops to go</div>
 

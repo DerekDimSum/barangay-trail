@@ -186,6 +186,54 @@ body {
 .big-btn.secondary:active { box-shadow: 0 2px 0 #4c2ea8, 0 4px 10px rgba(0, 0, 0, 0.3); }
 .big-btn:disabled { opacity: 0.75; cursor: default; }
 
+/* ---- passenger selection ---- */
+#screen-select { align-items: center; justify-content: center; text-align: center; gap: 12px; }
+
+.select-sub {
+  font-size: 14px;
+  font-weight: 600;
+  color: rgba(255, 236, 210, 0.8);
+  max-width: 300px;
+  line-height: 1.4;
+}
+
+.passenger-cards { display: flex; flex-direction: column; gap: 12px; width: min(330px, 100%); margin-top: 4px; }
+
+.passenger-card {
+  font: inherit;
+  border: none;
+  cursor: pointer;
+  border-radius: 18px;
+  background: linear-gradient(180deg, #ffffff, #ffe8cf);
+  color: var(--ink);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  box-shadow: 0 4px 0 #c98a4b, 0 8px 18px rgba(0, 0, 0, 0.22);
+  transition: transform 0.08s ease, box-shadow 0.08s ease;
+}
+.passenger-card:active { transform: translateY(3px); box-shadow: 0 1px 0 #c98a4b, 0 3px 8px rgba(0, 0, 0, 0.22); }
+.passenger-card:disabled { opacity: 0.6; cursor: default; }
+
+.passenger-emoji { font-size: 38px; line-height: 1; }
+.passenger-name { font-size: 19px; font-weight: 900; }
+.passenger-blurb { font-size: 13.5px; font-weight: 600; color: var(--ink-soft); line-height: 1.35; }
+.passenger-tag {
+  font-size: 10.5px;
+  font-weight: 900;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  background: #ffd43b;
+  color: #6b4a00;
+  border-radius: 999px;
+  padding: 3px 10px;
+  margin-top: 2px;
+}
+
+#hud-passenger { font-size: 11px; font-weight: 800; color: #ffe3c2; white-space: nowrap; }
+
 /* ---- big buttons ---- */
 .big-btn {
   font: inherit;
@@ -486,6 +534,8 @@ body {
   .title-art { font-size: 48px; }
   .game-title { font-size: 36px; }
   .game-title.small { font-size: 26px; }
+  .passenger-emoji { font-size: 32px; }
+  .passenger-card { padding: 11px 14px; }
   #screen-title, #screen-end { gap: 10px; }
   .end-text { font-size: 14px; }
   .score-card { padding: 10px 16px 9px; gap: 3px; }

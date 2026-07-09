@@ -6,6 +6,7 @@ This is a **concept prototype** built to be judged from a phone screen: mobile-n
 
 ## How it works
 
+- **You are bringing someone to the fiesta.** Every run starts at the passenger pick — the group chat gives you 2 of 5 possible passengers (Tita Baby, Kuya Jun, Lola Cora, Bunso Nico, Cousin Jessa); choose one, no backsies. Your passenger rides in the HUD and in your share card. (Identity only for now — passenger passives come later.)
 - A run is **10 legs**. Each leg: sometimes the road just *happens to you* (an **interlude** — no choice, carabao crossings, flat tires, free pandesal; it can strand you near death but never kill you), then an event fires with **two choices** — occasionally a **third** your stats unlocked (💛 8+ gets you the suki lane; 🪙 9+ buys ice for the whole street).
 - **The Daylight system**: every button shows the TOTAL hours that stop will take (🕐 1 hr green / 2 hrs amber / 3 hrs red), and the HUD keeps the exchange rate visible at all times: "☀️ 8 hrs of daylight · 9 stops to go." One extra hour = one more stop in the dark. The generous options are usually the slow ones. The HUD clock and the whole sky shift umaga → hapon → gabi, and **at night (5 PM+) the world closes**: every bonus is trimmed by 1 — *unless goodwill is 8+*, because the people you helped leave their lights on for you. Night also unlocks hostile interludes (askals, wrong turns) and, for the beloved, blessings (a tanod escort, a porch dinner). Arrival time sets **win quality**, never failure: before 8 PM = fireworks (+150 score), before 11 PM = last dance (+75), later = hugasan duty (+0, gently roasted).
 - **Two fixed landmarks** anchor every run: **Ang Lumang Tulay** at stop 5 (cross the grumpy old bridge, pay for Mang Islaw's bangka, or ride the kapitan's barge if you're beloved) and **Ang Huling Kanto** at stop 10 (cruise in, cut through the cemetery, or full birit down the highway). Landmarks hold the game's **only gambles** — 🎲 50/50 rolls with the time range shown on the button (`🎲 +0–2 hrs`). Dice only where it's dramatic; transparency everywhere else.
@@ -17,6 +18,10 @@ This is a **concept prototype** built to be judged from a phone screen: mobile-n
 ## Run locally
 
 Open `index.html` in a browser. That's it.
+
+## Tests
+
+`node test.mjs` runs the invariant suite: deck/content rules (no dominant choices, goodwill economy, effect ranges), engine guarantees (clamps, interlude floors, preview/commit honesty, landmark placement, night/cold stacking), passenger-pair invariants and seed determinism, and score ordering across 50k simulated runs.
 
 ## Balance simulation
 
@@ -41,7 +46,8 @@ It simulates 1,000 runs of random play and 1,000 runs of a greedy strategy (alwa
 ## Manual QA checklist (~5 minutes)
 
 1. **Title screen** — title, subtitle, hook, and Start button visible; footer "Made by Dim Sum Games" not clipped by the home indicator.
-2. **Start a run** — the first run of a visit opens with the "🎆 Ang Pista" framing card (6 AM departure, fireworks at 8 PM, night warning); replays skip it. All four bars at 10/12; "Stop 1/10 · 6:00 AM ☀️"; trike 🛺 on the trail, 🎆 at the end.
+2. **Passenger pick** — Start always leads to "Sino ang ihahatid mo?" with exactly 2 of the 5 passengers; tapping a card starts the run; replays show a fresh pair; your pick appears in the HUD (top right) and in the copied share text ("Kasama: ...").
+2b. **Start a run** — the first run of a visit opens with the "🎆 Ang Pista" framing card (6 AM departure, fireworks at 8 PM, night warning); replays skip it. All four bars at 10/12; "Stop 1/10 · 6:00 AM ☀️"; trike 🛺 on the trail, 🎆 at the end.
 3. **Choice buttons** — resource effects on the left (gains that cannot land — bar full, or trimmed to zero by night/cold — are dimmed and struck through), total-time badge on the right (🕐 1 hr green / 2 hrs amber / 3 hrs red / 🎲 1–3 hrs purple on landmark gambles); after tapping, buttons disable instantly and a result line + a countdown chip ("☀️ 9:00 AM — dark in 8 hrs, 8 stops to go") + Continue appear.
 3b. **Daylight budget** — the line under the trail ("☀️ 8 hrs of daylight · 9 stops to go") updates every leg and shifts color as the margin tightens.
 4. **The sky changes** — burn time with slow choices: the whole background shifts from morning purple to sunset orange to deep night blue as the clock passes 12 PM and 5 PM.

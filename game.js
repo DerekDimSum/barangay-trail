@@ -74,6 +74,17 @@ const RES_META = {
   goodwill: { emoji: '💛', label: 'Goodwill' },
 };
 
+/* The passenger pool: who you promised to bring to the fiesta.
+   v0.2 = identity only — no passives, no stat changes. Each run offers
+   2 of these 5 (drawn from the run's RNG stream); the player picks one. */
+const PASSENGERS = [
+  { id: 'tita-baby', name: 'Tita Baby', emoji: '👒', blurb: 'Knows everyone. Brings snacks. Will absolutely judge your choices.', tag: 'Social safety' },
+  { id: 'kuya-jun', name: 'Kuya Jun', emoji: '🧢', blurb: 'Has a cousin nearby. Somehow knows a shortcut.', tag: 'Diskarte route' },
+  { id: 'lola-cora', name: 'Lola Cora', emoji: '👵', blurb: 'Everyone respects her. Everyone also wants her to sit, eat, and rest.', tag: 'Respect route' },
+  { id: 'bunso-nico', name: 'Bunso Nico', emoji: '🧒', blurb: 'Small passenger. Big snack requirements.', tag: 'Cute chaos' },
+  { id: 'cousin-jessa', name: 'Cousin Jessa', emoji: '🤳', blurb: 'Already posting the journey. The barangay is watching.', tag: 'Receipts route' },
+];
+
 /* Declarative conditions: { res, atLeast?, atMost? }, { flag }, or
    { time: 'umaga'|'hapon'|'gabi' }. Arrays mean ALL must hold.
    Used by choiceC.requires, event.boostWhen, interlude.requires. */
@@ -446,7 +457,9 @@ function condMet(run, req) {
   return true;
 }
 
-/* A fresh run: full resources, 6 AM departure, live-draw pools. */
+/* A fresh run: full resources, 6 AM departure, live-draw pools, and a
+   passenger pair offered from the same RNG stream (seed-safe for future
+   daily runs). `passenger` stays null until the player chooses. */
 function newRun(rand = Math.random) {
   return {
     res: { coins: START_VALUE, food: START_VALUE, fuel: START_VALUE, goodwill: START_VALUE },
@@ -455,6 +468,8 @@ function newRun(rand = Math.random) {
     flags: {},
     pool: shuffled(DECK, rand),
     interludePool: shuffled(INTERLUDES, rand),
+    passengerPair: shuffled(PASSENGERS, rand).slice(0, 2),
+    passenger: null,
     rand,
     currentEvent: null,
     over: false,
@@ -800,7 +815,7 @@ if (IN_BROWSER) {
 
 function initUI() {
   const $ = (id) => document.getElementById(id);
-  const screens = { title: $('screen-title'), game: $('screen-game'), end: $('screen-end') };
+  const screens = { title: $('screen-title'), select: $('screen-select'), game: $('screen-game'), end: $('screen-end') };
   let run = null;
   let resolving = false;
   let pendingInterlude = null; // interlude shown before the event card
@@ -1130,11 +1145,12 @@ function initUI() {
 
     shareText = [
       '🛺 Barangay Trail: Road to Fiesta',
+      run.passenger ? `${run.passenger.emoji} Kasama: ${run.passenger.name}` : null,
       `🏆 Fiesta Score: ${s.score.toLocaleString('en-US')} — ${tier}`,
       `🏁 ${s.survived}/${TOTAL_STOPS} stops · ${won ? `arrived ${clock} ${early ? '🎆' : '🌙'}` : `stranded ${clock}`} · beat ~${pct}% of travelers`,
       `🪙${run.res.coins} 🍚${run.res.food} ⛽${run.res.fuel} 💛${run.res.goodwill}`,
       'Kaya mo ba? 🎉',
-    ].join('\n');
+    ].filter(Boolean).join('\n');
     const shareBtn = $('btn-share');
     shareBtn.disabled = false;
     shareBtn.textContent = 'Copy score 📋';
@@ -1175,15 +1191,44 @@ function initUI() {
 
   let introShown = false; // the fiesta framing shows once per page visit
 
-  function startGame() {
-    run = newRun(); // fresh shuffle + full resources + 6 AM every time
+  /* Every run starts at the passenger pick: 2 of 5, fresh pair per run,
+     no reroll. Tapping a card IS the start of the journey. */
+  function renderSelect() {
+    phase = 'select';
+    document.body.classList.remove('t-hapon', 't-gabi');
+    for (const i of [0, 1]) {
+      const p = run.passengerPair[i];
+      const btn = $(`passenger-${i}`);
+      btn.disabled = false;
+      btn.querySelector('.passenger-emoji').textContent = p.emoji;
+      btn.querySelector('.passenger-name').textContent = p.name;
+      btn.querySelector('.passenger-blurb').textContent = p.blurb;
+      btn.querySelector('.passenger-tag').textContent = p.tag;
+    }
+    show('select');
+  }
+
+  function selectPassenger(i) {
+    if (!run || run.passenger || phase !== 'select') return;
+    run.passenger = run.passengerPair[i];
+    $('passenger-0').disabled = true;
+    $('passenger-1').disabled = true;
     sound('tap');
+    $('hud-passenger').textContent = `${run.passenger.emoji} ${run.passenger.name}`;
     show('game');
     if (introShown) beginLeg();
     else { introShown = true; renderIntro(); }
   }
 
+  function startGame() {
+    run = newRun(); // fresh shuffle + full resources + 6 AM + fresh pair
+    sound('tap');
+    renderSelect();
+  }
+
   $('btn-start').addEventListener('click', startGame);
+  $('passenger-0').addEventListener('click', () => selectPassenger(0));
+  $('passenger-1').addEventListener('click', () => selectPassenger(1));
   $('btn-a').addEventListener('click', () => choose('A'));
   $('btn-b').addEventListener('click', () => choose('B'));
   $('btn-c').addEventListener('click', () => choose('C'));
