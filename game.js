@@ -64,7 +64,7 @@ const NIGHT_HOUR = 17;       // gabi begins; the world starts closing
 const NIGHT_GOODWILL = 8;    // goodwill at/above this keeps doors open at night
 const FIREWORKS_HOUR = 20;   // arrive before this = best win
 const LAST_DANCE_HOUR = 23;  // arrive before this = decent win
-const INTERLUDE_CHANCE = 0.65;
+const INTERLUDE_CHANCE = 0.7;
 
 const RES_KEYS = ['coins', 'food', 'fuel', 'goodwill'];
 const RES_META = {
@@ -81,30 +81,40 @@ const PASSENGERS = [
   {
     id: 'tita-baby', name: 'Tita Baby', emoji: '👒',
     blurb: 'Knows everyone. Brings snacks. Will absolutely judge your choices.', tag: 'Social safety',
+    start: {},
+    passiveText: 'Once per run, 💛 refuses to hit zero — may tinatawagan siya. Laging may tinatawagan.',
     epilogueWin: 'Tita Baby steps out first, waves like she planned everything, and somehow everyone believes her.',
     epilogueLoss: 'Tita Baby says “Okay lang,” in the tone that means this will be discussed later.',
   },
   {
     id: 'kuya-jun', name: 'Kuya Jun', emoji: '🧢',
     blurb: 'Has a cousin nearby. Somehow knows a shortcut.', tag: 'Diskarte route',
+    start: {},
+    passiveText: 'Slow choices (2+ extra hrs) take 1 hour less. Alam niya ang daan. Daw.',
     epilogueWin: 'Kuya Jun says the route was obvious. It was not obvious.',
     epilogueLoss: 'Kuya Jun insists the shortcut was correct. The road respectfully disagrees.',
   },
   {
     id: 'lola-cora', name: 'Lola Cora', emoji: '👵',
     blurb: 'Everyone respects her. Everyone also wants her to sit, eat, and rest.', tag: 'Respect route',
+    start: { goodwill: 2, food: -3 },
+    passiveText: 'Starts +2 💛 −3 🍚. No cold shoulder, ever — and doors stay open at night.',
     epilogueWin: 'Lola Cora steps out and the whole plaza softens. Suddenly, you are forgiven for everything.',
     epilogueLoss: 'Lola Cora says, “Okay lang, apo.” Somehow that makes it worse and better.',
   },
   {
     id: 'bunso-nico', name: 'Bunso Nico', emoji: '🧒',
     blurb: 'Small passenger. Big snack requirements.', tag: 'Cute chaos',
+    start: { food: -2, coins: -1 },
+    passiveText: 'Starts −2 🍚 −1 🪙 (snacks). 💛 costs 1 lighter (walang galit kay Nico), pero 🍚 gains 1 lighter din.',
     epilogueWin: 'Bunso Nico announces the journey was easy. He was asleep for half of it.',
     epilogueLoss: 'Bunso Nico asks if the failed trip still includes snacks. Priorities remain strong.',
   },
   {
     id: 'cousin-jessa', name: 'Cousin Jessa', emoji: '🤳',
     blurb: 'Already posting the journey. The barangay is watching.', tag: 'Receipts route',
+    start: { coins: 1 },
+    passiveText: 'Starts +1 🪙 (ad revenue). 💛 costs are 1 heavier — pero +250 score pag nakarating.',
     epilogueWin: 'Cousin Jessa posts the arrival before you even park. Caption already has sparkle emojis.',
     epilogueLoss: 'Cousin Jessa says she will not post the failure. She is lying gently.',
   },
@@ -726,17 +736,43 @@ function newRun(rand = Math.random) {
   };
 }
 
+/* Attach a chosen passenger to a run: identity + starting modifiers.
+   The one place passenger state enters the engine (UI and sim both
+   call this), so passives stay consistent everywhere. */
+function assignPassenger(run, p) {
+  run.passenger = p;
+  for (const k of Object.keys(p.start || {})) {
+    run.res[k] = clamp(run.res[k] + p.start[k]);
+  }
+}
+
 /* Bonus trims: cold shoulder (goodwill < 3) and the night rule
    (gabi + goodwill < 7 → the world is closed to you). They stack.
-   Time costs are never trimmed — hours are hours. */
+   Time costs are never trimmed — hours are hours.
+   PASSENGER PASSIVES also live here so every consumer (choice
+   resolution, interludes, the sim bot, and the on-button display)
+   sees identical numbers:
+   - Lola Cora: cold shoulder and night trim never apply.
+   - Kuya Jun: time costs of 2+ hours are reduced by 1.
+   - Bunso Nico: goodwill costs are 1 lighter (toward zero).
+   - Cousin Jessa: goodwill costs are 1 heavier (capped at −4). */
 function effectiveEffects(run, effects) {
-  const cold = run.res.goodwill < COLD_THRESHOLD;
-  const night = timeBand(run.hour) === 'gabi' && run.res.goodwill < NIGHT_GOODWILL;
+  const pid = run.passenger ? run.passenger.id : null;
+  const immune = pid === 'lola-cora';
+  const cold = !immune && run.res.goodwill < COLD_THRESHOLD;
+  const night = !immune && timeBand(run.hour) === 'gabi' && run.res.goodwill < NIGHT_GOODWILL;
   const trim = (cold ? 1 : 0) + (night ? 1 : 0);
-  const out = { time: effects.time || 0 };
+  let time = effects.time || 0;
+  if (pid === 'kuya-jun' && time >= 2) time -= 1;
+  const out = { time };
   for (const k of RES_KEYS) {
     let v = effects[k] || 0;
     if (trim && v > 0) v = Math.max(0, v - trim);
+    if (k === 'goodwill' && v < 0) {
+      if (pid === 'bunso-nico') v = Math.min(0, v + 1);
+      else if (pid === 'cousin-jessa') v = Math.max(-4, v - 1);
+    }
+    if (k === 'food' && v > 0 && pid === 'bunso-nico') v = Math.max(0, v - 1); // he eats first
     out[k] = v;
   }
   return { effects: out, cold, night };
@@ -842,11 +878,18 @@ function applyChoice(run, which) {
   const { effects, cold, night } = effectiveEffects(run, picked.effects);
 
   const deltas = {};
+  const beforeRes = { ...run.res };
   for (const k of RES_KEYS) {
-    const before = run.res[k];
-    run.res[k] = clamp(before + effects[k]);
-    deltas[k] = run.res[k] - before;
+    run.res[k] = clamp(beforeRes[k] + effects[k]);
   }
+  // Tita Baby's passive: once per run, goodwill refuses to hit zero.
+  let titaSave = false;
+  if (run.res.goodwill === 0 && run.passenger && run.passenger.id === 'tita-baby' && !run.flags['tita-called']) {
+    run.res.goodwill = 1;
+    run.flags['tita-called'] = true;
+    titaSave = true;
+  }
+  for (const k of RES_KEYS) deltas[k] = run.res[k] - beforeRes[k];
   run.hour += LEG_HOURS + effects.time;
   deltas.time = effects.time;
   if (choice.sets) run.flags[choice.sets] = true;
@@ -872,6 +915,7 @@ function applyChoice(run, which) {
       ? (picked.roll === 'win' ? choice.gamble.resultWin : choice.gamble.resultLose)
       : which === 'A' ? ev.resultA : which === 'B' ? ev.resultB : ev.resultC,
     gambleRoll: picked.roll,
+    titaSave,
     outcome: run.outcome,
     deadResource: dead,
   };
@@ -899,8 +943,10 @@ function arrivalBonus(hour) {
 function computeScore(run) {
   const survived = run.outcome === 'win' ? TOTAL_STOPS : Math.max(0, run.stop - 1);
   const resTotal = RES_KEYS.reduce((s, k) => s + run.res[k], 0);
+  // Cousin Jessa's passive payoff: the arrival post pops off.
+  const jessaBonus = run.outcome === 'win' && run.passenger && run.passenger.id === 'cousin-jessa' ? 250 : 0;
   const score = survived * 100
-    + (run.outcome === 'win' ? WIN_BONUS + arrivalBonus(run.hour) : 0)
+    + (run.outcome === 'win' ? WIN_BONUS + arrivalBonus(run.hour) + jessaBonus : 0)
     + resTotal * 10
     + run.res.goodwill * 10;
   return { score, survived, resTotal, hour: run.hour };
@@ -926,17 +972,17 @@ function passengerEpilogue(run) {
    1/3 semi-careful, 1/3 greedy) — regenerate with `node game.js --dist`
    after any balance change. Index i = score at the i-th percentile. */
 const SCORE_PERCENTILES = [
-  490, 580, 640, 660, 670, 680, 690, 700, 700, 710,
-  710, 720, 730, 730, 740, 750, 750, 760, 770, 770,
-  780, 780, 790, 800, 800, 810, 810, 820, 830, 830,
-  840, 840, 850, 850, 860, 860, 870, 870, 880, 880,
-  890, 890, 900, 900, 900, 910, 910, 920, 920, 930,
+  460, 570, 620, 640, 660, 670, 680, 690, 700, 700,
+  710, 720, 720, 730, 730, 740, 750, 760, 760, 770,
+  770, 780, 790, 790, 800, 800, 810, 820, 820, 830,
+  830, 840, 840, 850, 850, 860, 860, 870, 870, 880,
+  880, 890, 890, 900, 900, 910, 910, 920, 920, 930,
   930, 940, 940, 950, 950, 960, 960, 970, 970, 980,
   980, 990, 990, 1000, 1000, 1010, 1020, 1020, 1030, 1040,
-  1050, 1070, 1080, 1110, 1140, 1780, 1810, 1820, 1830, 1850,
-  1855, 1860, 1870, 1880, 1890, 1895, 1905, 1910, 1920, 1925,
-  1935, 1940, 1950, 1960, 1970, 1975, 1990, 2005, 2025, 2050,
-  2140,
+  1050, 1060, 1070, 1090, 1120, 1190, 1810, 1830, 1850, 1860,
+  1875, 1885, 1895, 1905, 1915, 1925, 1935, 1945, 1955, 1965,
+  1975, 1985, 2000, 2020, 2040, 2060, 2080, 2115, 2150, 2200,
+  2410,
 ];
 
 function percentileFor(score) {
@@ -993,8 +1039,11 @@ function pickGreedy(run) {
   return best;
 }
 
-function playRun(picker) {
+/* Simulated runs always carry a passenger, like real play: a forced
+   one for per-passenger tuning, or a random pick from the offered pair. */
+function playRun(picker, passenger) {
   const run = newRun();
+  assignPassenger(run, passenger || run.passengerPair[Math.floor(Math.random() * 2)]);
   while (!run.over) {
     const pending = startLeg(run);
     if (pending) commitInterlude(run, pending);
@@ -1003,13 +1052,13 @@ function playRun(picker) {
   return run;
 }
 
-function simulate(runs, picker) {
+function simulate(runs, picker, passenger) {
   let wins = 0;
   let fireworks = 0;
   let hourSum = 0;
   const lossBy = { coins: 0, food: 0, fuel: 0, goodwill: 0 };
   for (let i = 0; i < runs; i++) {
-    const run = playRun(picker);
+    const run = playRun(picker, passenger);
     if (run.outcome === 'win') {
       wins++;
       hourSum += run.hour;
@@ -1030,10 +1079,12 @@ function runSimulation(runs = 1000) {
   const rnd = simulate(runs, pickRandom);
   const grd = simulate(runs, pickGreedy);
   const pct = (x) => (x * 100).toFixed(1) + '%';
-  console.log(`[Barangay Trail sim] ${runs} runs each`);
+  console.log(`[Barangay Trail sim] ${runs} runs each (random passenger from the offered pair)`);
   console.log(`  Random play win rate: ${pct(rnd.winRate)}  (losses by: ${JSON.stringify(rnd.lossBy)}; avg arrival ${formatHour(rnd.avgArrival)})`);
   console.log(`  Greedy play win rate: ${pct(grd.winRate)}  (losses by: ${JSON.stringify(grd.lossBy)}; avg arrival ${formatHour(grd.avgArrival)}, ${pct(grd.fireworksRate)} of wins catch the fireworks)`);
-  console.log('  Target: greedy 40–50%.');
+  const per = PASSENGERS.map((p) => `${p.id} ${pct(simulate(600, pickGreedy, p).winRate)}`);
+  console.log(`  Greedy per passenger: ${per.join(' | ')}`);
+  console.log('  Target: greedy 40–50% overall and per passenger.');
   return { random: rnd.winRate, greedy: grd.winRate };
 }
 
@@ -1133,9 +1184,11 @@ function initUI() {
     for (const key of Object.keys(screens)) screens[key].classList.toggle('active', key === name);
   }
 
-  /* Effect tokens for a choice button. Gains that can't land right now
-     (bar already full, or trimmed to nothing by night/cold) are dimmed —
-     the game does the "is this worth anything?" math for you. */
+  /* Effect tokens for a choice button, shown at their EFFECTIVE values
+     (after night/cold trims and passenger passives) — the number on the
+     button is always the number that will happen. Gains that can't land
+     (bar full, or trimmed to nothing) are dimmed with the raw value
+     struck through. */
   function renderEffects(el, choice) {
     el.innerHTML = '';
     const { effects: eff } = effectiveEffects(run, choice.effects);
@@ -1143,17 +1196,18 @@ function initUI() {
       const raw = choice.effects[k] || 0;
       if (!raw) continue;
       const span = document.createElement('span');
-      span.textContent = `${RES_META[k].emoji} ${raw > 0 ? '+' : '−'}${Math.abs(raw)}`;
       const wasted = raw > 0 && (run.res[k] >= CAP || eff[k] === 0);
-      if (wasted) span.className = 'muted';
+      const shown = wasted ? raw : (eff[k] === 0 ? raw : eff[k]);
+      span.textContent = `${RES_META[k].emoji} ${shown > 0 ? '+' : '−'}${Math.abs(shown)}`;
+      if (wasted || eff[k] === 0) span.className = 'muted';
       el.appendChild(span);
     }
   }
 
-  /* Time badge: TOTAL hours this stop takes (base 1 + choice cost),
-     so options compare as plain numbers — 1 hr vs 3 hrs. */
+  /* Time badge: TOTAL hours this stop takes (base 1 + effective cost,
+     so Kuya Jun's shortcut shows right on the button). */
   function renderTimeBadge(el, choice) {
-    const totals = choiceOutcomes(choice).map((o) => LEG_HOURS + (o.effects.time || 0));
+    const totals = choiceOutcomes(choice).map((o) => LEG_HOURS + effectiveEffects(run, o.effects).effects.time);
     if (totals.length > 1 && Math.min(...totals) !== Math.max(...totals)) {
       el.textContent = `🎲 ${Math.min(...totals)}–${Math.max(...totals)} hrs`;
       el.className = 'choice-km gamble';
@@ -1247,6 +1301,7 @@ function initUI() {
     $('ev-result').classList.add('hidden');
     $('ev-km').classList.add('hidden');
     $('ev-cold').classList.add('hidden');
+    $('ev-passive').classList.add('hidden');
     renderBars(null);
     renderHud();
     $('choices').classList.add('hidden');
@@ -1270,6 +1325,7 @@ function initUI() {
     $('ev-result').classList.add('hidden');
     $('ev-km').classList.add('hidden');
     $('ev-cold').classList.add('hidden');
+    $('ev-passive').classList.add('hidden');
     renderBars(null);
     renderHud();
     $('choices').classList.add('hidden');
@@ -1293,6 +1349,7 @@ function initUI() {
     $('ev-result').classList.add('hidden');
     $('ev-km').classList.add('hidden');
     $('ev-cold').classList.add('hidden');
+    $('ev-passive').classList.add('hidden');
     renderBars(interludeDeltas || null); // bars pulse as the interlude lands
     const opts = availableChoices(run);
     for (const which of ['a', 'b', 'c']) {
@@ -1358,6 +1415,8 @@ function initUI() {
 
     $('ev-cold').classList.toggle('hidden', !outcome.cold);
     if (outcome.cold) $('ev-cold').textContent = COLD_LINE;
+    $('ev-passive').classList.toggle('hidden', !outcome.titaSave);
+    if (outcome.titaSave) $('ev-passive').textContent = '👒 Tita Baby makes exactly one phone call. Goodwill holds at 1. “Wag mo na uulitin, ha.”';
 
     $('choices').classList.add('hidden');
     const cont = $('btn-continue');
@@ -1485,6 +1544,7 @@ function initUI() {
       btn.querySelector('.passenger-emoji').textContent = p.emoji;
       btn.querySelector('.passenger-name').textContent = p.name;
       btn.querySelector('.passenger-blurb').textContent = p.blurb;
+      btn.querySelector('.passenger-passive').textContent = p.passiveText;
       btn.querySelector('.passenger-tag').textContent = p.tag;
     }
     show('select');
@@ -1492,7 +1552,7 @@ function initUI() {
 
   function selectPassenger(i) {
     if (!run || run.passenger || phase !== 'select') return;
-    run.passenger = run.passengerPair[i];
+    assignPassenger(run, run.passengerPair[i]);
     $('passenger-0').disabled = true;
     $('passenger-1').disabled = true;
     sound('tap');

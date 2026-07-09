@@ -72,6 +72,7 @@ ok(favorEvents.length >= 3, 'only ' + favorEvents.length + ' pay-in-goodwill eve
 //    floors/clamps hold, clock only advances, no repeats, gating honest
 for (let i = 0; i < 5000; i++) {
   const run = newRun();
+  assignPassenger(run, PASSENGERS[i % PASSENGERS.length]); // hammer every passive
   const seen = new Set();
   while (!run.over) {
     const legIndex = run.stop;
@@ -213,6 +214,67 @@ for (const p of PASSENGERS) {
   ok(passengerEpilogue(r) === PASSENGERS[0].epilogueWin, 'win epilogue wrong');
   r.outcome = 'lose';
   ok(passengerEpilogue(r) === PASSENGERS[0].epilogueLoss, 'loss epilogue wrong');
+}
+
+// 9d. Passenger passives (v0.5)
+{
+  const r = newRun();
+  const before = { ...r.res };
+  assignPassenger(r, PASSENGERS.find(p => p.id === 'lola-cora'));
+  ok(r.res.goodwill === before.goodwill + 2 && r.res.food === before.food - 3, 'lola start mods wrong');
+}
+{
+  // Tita Baby: goodwill refuses to hit zero, exactly once
+  const r = newRun();
+  assignPassenger(r, PASSENGERS.find(p => p.id === 'tita-baby'));
+  r.stop = 2; r.res.goodwill = 3;
+  r.currentEvent = DECK.find(e => e.id === 'barangay-captain'); // B: goodwill -3
+  const out = applyChoice(r, 'B');
+  ok(out.titaSave === true && r.res.goodwill === 1 && out.outcome === null, 'tita save did not fire');
+  r.res.goodwill = 3; r.currentEvent = DECK.find(e => e.id === 'family-group-chat'); // B: goodwill -4
+  const out2 = applyChoice(r, 'B');
+  ok(out2.titaSave === false && out2.outcome === 'lose' && out2.deadResource === 'goodwill', 'tita save fired twice');
+}
+{
+  // Kuya Jun: 2-hr costs become 1; 1-hr costs untouched
+  const r = newRun();
+  assignPassenger(r, PASSENGERS.find(p => p.id === 'kuya-jun'));
+  ok(effectiveEffects(r, { time: 2 }).effects.time === 1, 'kuya did not shorten 2h');
+  ok(effectiveEffects(r, { time: 1 }).effects.time === 1, 'kuya wrongly shortened 1h');
+}
+{
+  // Lola Cora: no cold shoulder, no night trim
+  const r = newRun();
+  assignPassenger(r, PASSENGERS.find(p => p.id === 'lola-cora'));
+  r.res.goodwill = 2; r.hour = 19;
+  const eff = effectiveEffects(r, { food: 2 });
+  ok(!eff.cold && !eff.night && eff.effects.food === 2, 'lola immunity failed');
+}
+{
+  // Nico: goodwill costs 1 lighter + food gains 1 lighter; Jessa: costs 1 heavier, capped at -4
+  const r = newRun();
+  assignPassenger(r, PASSENGERS.find(p => p.id === 'bunso-nico'));
+  ok(effectiveEffects(r, { goodwill: -3 }).effects.goodwill === -2, 'nico discount failed');
+  ok(effectiveEffects(r, { goodwill: -1 }).effects.goodwill === 0, 'nico full forgiveness failed');
+  ok(effectiveEffects(r, { food: 2 }).effects.food === 1, 'nico food trim failed');
+  const j = newRun();
+  assignPassenger(j, PASSENGERS.find(p => p.id === 'cousin-jessa'));
+  ok(effectiveEffects(j, { goodwill: -3 }).effects.goodwill === -4, 'jessa surcharge failed');
+  ok(effectiveEffects(j, { goodwill: -4 }).effects.goodwill === -4, 'jessa surcharge exceeded -4 cap');
+}
+{
+  // Jessa: +250 score on wins only
+  const j = newRun();
+  assignPassenger(j, PASSENGERS.find(p => p.id === 'cousin-jessa'));
+  j.outcome = 'win'; j.stop = 10; j.hour = 22;
+  const withBonus = computeScore(j).score;
+  j.passenger = PASSENGERS.find(p => p.id === 'tita-baby');
+  ok(withBonus === computeScore(j).score + 250, 'jessa win bonus wrong');
+  j.passenger = PASSENGERS.find(p => p.id === 'cousin-jessa');
+  j.outcome = 'lose'; j.deadResource = 'coins'; j.stop = 6;
+  const lossScore = computeScore(j).score;
+  j.passenger = PASSENGERS.find(p => p.id === 'tita-baby');
+  ok(lossScore === computeScore(j).score, 'jessa bonus leaked into losses');
 }
 
 // 10. Any win outscores any loss (50k runs); win tier floor holds

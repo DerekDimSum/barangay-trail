@@ -239,6 +239,16 @@ body {
 .passenger-emoji { font-size: 38px; line-height: 1; }
 .passenger-name { font-size: 19px; font-weight: 900; }
 .passenger-blurb { font-size: 13.5px; font-weight: 600; color: var(--ink-soft); line-height: 1.35; }
+.passenger-passive {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #8a5a1c;
+  background: rgba(255, 212, 59, 0.22);
+  border-radius: 10px;
+  padding: 5px 10px;
+  line-height: 1.35;
+}
+
 .passenger-tag {
   font-size: 10.5px;
   font-weight: 900;
@@ -451,6 +461,16 @@ body {
 .ev-km.day { background: #fff9db; color: #9a6700; }
 .ev-km.dusk { background: #ffe8cc; color: #b35c0a; }
 .ev-km.night { background: #e5dbff; color: #4c3a99; }
+.ev-passive {
+  font-size: 13.5px;
+  line-height: 1.4;
+  font-weight: 700;
+  color: #7a4a08;
+  background: #fff3bf;
+  border-radius: 12px;
+  padding: 8px 12px;
+  animation: fadein 0.25s ease;
+}
 .ev-cold {
   font-size: 13.5px;
   line-height: 1.4;
