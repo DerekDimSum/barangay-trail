@@ -1262,14 +1262,11 @@ function initUI() {
     }
   }
 
-  /* HUD: journey progress + the clock; the sky follows the time band.
+  /* HUD: the clock and the passenger; the sky follows the time band.
      The daylight line is the time-budget readout — hours to dark vs
      stops to go, so every ⏳ hour has a visible exchange rate. */
   function renderHud() {
     const band = timeBand(run.hour);
-    const pct = Math.min(100, (run.stop / TOTAL_STOPS) * 100);
-    $('trail-fill').style.width = `${pct}%`;
-    document.querySelector('.trail-trike').style.left = `${pct}%`;
     $('stop-label').textContent =
       `Stop ${Math.min(TOTAL_STOPS, run.stop + 1)}/${TOTAL_STOPS} · ${formatHour(run.hour)} ${bandEmoji(band)}`;
     document.body.classList.toggle('t-hapon', band === 'hapon');

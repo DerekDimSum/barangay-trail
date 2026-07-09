@@ -292,41 +292,9 @@ body {
 .big-btn:active { transform: translateY(4px); box-shadow: 0 2px 0 #c77800, 0 4px 10px rgba(0,0,0,0.3); }
 
 /* ---- HUD ---- */
-.hud { flex: 0 0 auto; display: flex; align-items: center; gap: 10px; padding: 2px 2px 8px; }
+.hud { flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 2px 2px 8px; }
 
 #stop-label { font-size: 13px; font-weight: 800; color: #ffe3c2; white-space: nowrap; }
-
-.trail {
-  position: relative;
-  flex: 1;
-  height: 10px;
-  background: rgba(255,255,255,0.18);
-  border-radius: 999px;
-}
-#trail-fill {
-  height: 100%;
-  width: 0%;
-  background: linear-gradient(90deg, #ffd43b, #ff9f43);
-  border-radius: 999px;
-  transition: width 0.4s ease;
-}
-.trail-trike {
-  position: absolute;
-  top: 50%;
-  left: 0%;
-  transform: translate(-50%, -58%);
-  font-size: 18px;
-  transition: left 0.4s ease;
-  z-index: 2;
-}
-
-.trail-goal {
-  position: absolute;
-  top: 50%;
-  right: -4px;
-  transform: translateY(-54%);
-  font-size: 13px;
-}
 
 /* ---- daylight budget: hours to dark vs stops to go ---- */
 .daylight-label {

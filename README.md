@@ -49,9 +49,9 @@ It simulates 1,000 runs of random play and 1,000 runs of a greedy strategy (alwa
 1. **Title screen** — title, subtitle, hook, and Start button visible; footer "Made by Dim Sum Games" not clipped by the home indicator.
 2. **Passenger pick** — Start always leads to "Sino ang ihahatid mo?" with exactly 2 of the 5 passengers. Each card is triaged for a fast read: emoji + name, a one-line vibe, the promised arrival hour as a gold pill (🕐), start-modifier ± chips (only where a stat changes — e.g. Lola shows 🍚−3 💛+2, Tita shows none), and the passive in one quiet line. Tapping a card starts the run with those modifiers applied (check the bars); replays show a fresh pair; your pick appears in the HUD and share text.
 2a. **Passives visible in play** — with Bunso Nico, a 💛 −3 button reads 💛 −2; with Kuya Jun, a 3-hr choice reads 🕐 2 hrs; with Tita Baby, the first time goodwill would hit zero a gold "one phone call" line appears and goodwill holds at 1 (once only).
-2b. **Start a run** — tapping a passenger goes straight into the first leg (no separate briefing screen; the onboarding lives on the title screen, the promise on the selection card). All four bars at 10/12; "Stop 1/10 · 6:00 AM ☀️"; the HUD passenger chip shows the promised hour ("👵 Lola Cora · by 5 PM") for the whole run; trike 🛺 on the trail, 🎆 at the end.
+2b. **Start a run** — tapping a passenger goes straight into the first leg (no separate briefing screen; the onboarding lives on the title screen, the promise on the selection card). All four bars at 10/12; "Stop 1/10 · 6:00 AM ☀️"; the HUD passenger chip shows the promised hour ("👵 Lola Cora · by 5 PM") for the whole run.
 3. **Choice buttons** — resource effects on the left (gains that cannot land — bar full, or trimmed to zero by night/cold — are dimmed and struck through), total-time badge on the right (🕐 1 hr green / 2 hrs amber / 3 hrs red / 🎲 1–3 hrs purple on landmark gambles); after tapping, buttons disable instantly and a result line + a countdown chip ("☀️ 9:00 AM — dark in 8 hrs, 8 stops to go") + Continue appear.
-3b. **Daylight budget** — the line under the trail ("☀️ 8 hrs of daylight · 9 stops to go") updates every leg and shifts color as the margin tightens.
+3b. **Daylight budget** — the line under the HUD ("☀️ 8 hrs of daylight · 9 stops to go") updates every leg and shifts color as the margin tightens.
 4. **The sky changes** — burn time with slow choices: the whole background shifts from morning purple to sunset orange to deep night blue as the clock passes 12 PM and 5 PM.
 5. **Night rules** — after 5 PM with 💛 below 8, the indigo "🌙 Gabi na — sarado na ang mga tindahan" banner shows and bonuses shrink by 1; with 💛 8+, it turns gold ("may nag-iwan ng ilaw para sa'yo") and there's no penalty. At night, watch for night-only interludes: askals and wrong turns for everyone, a tanod escort or porch dinner if you're loved.
 6. **Landmarks** — the gold ⭐ bridge card always appears at Stop 5 and the finale at Stop 10; take Mang Islaw's bangka a few times and confirm both gamble results occur.
@@ -72,7 +72,7 @@ It simulates 1,000 runs of random play and 1,000 runs of a greedy strategy (alwa
 - The "beat ~X% of travelers" percentile compares against a *simulated* population baked into the code, not real players — a real leaderboard needs the backend we deliberately skipped.
 - Random play is brutally punished (~3–5% win rate); a casual/pity mode would be the first balancing pass after concept approval.
 - The sky changes at band boundaries (12 PM / 5 PM) as a color snap, not a gradual sunset; a real build would tween it.
-- No animations between stops beyond bar/trail transitions; a real build would add travel vignettes.
+- No animations between stops beyond bar transitions; a real build would add travel vignettes.
 
 ## Credits
 
