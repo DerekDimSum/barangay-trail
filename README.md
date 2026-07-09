@@ -65,7 +65,7 @@ It simulates 1,000 runs of random play and 1,000 runs of a greedy strategy (alwa
 
 ## Known prototype limitations
 
-- One deck of 24 events + 19 interludes; replay value grows by adding content (all plain data arrays in `game.js` — easy to extend or port). Night-variant *events* (not just interludes) would be the natural next content pass.
+- One deck of 36 events + 19 interludes; replay value grows by adding content (all plain data arrays in `game.js` — easy to extend or port). Night-variant and passenger-specific events would be the natural next content pass.
 - Sounds are minimal WebAudio blips; no music, no haptics.
 - No persistence (no best-streak, no stats between sessions) — intentional for the prototype.
 - The "beat ~X% of travelers" percentile compares against a *simulated* population baked into the code, not real players — a real leaderboard needs the backend we deliberately skipped.

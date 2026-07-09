@@ -15,11 +15,11 @@ const fails = [];
 const ok = (cond, msg) => { if (!cond) fails.push(msg); };
 
 // 1. Deck integrity: 24 events, one per topic; landmarks fixed at legs 5 & 10
-const TOPICS = ['sari-sari','tricycle-fare','jeepney-queue','palengke','sudden-rain','brownout','karaoke','fiesta-prep','tita-advice','basketball-court','barangay-captain','merienda','lechon-queue','family-group-chat','road-detour','school-crossing','gas-station','neighbor-help','cousin-ride','halo-halo-stand','church-bell','town-plaza','market-discount','fiesta-banner'];
-ok(DECK.length === 24, 'deck has ' + DECK.length + ' events');
+const TOPICS = ['sari-sari','tricycle-fare','jeepney-queue','palengke','sudden-rain','brownout','karaoke','fiesta-prep','tita-advice','basketball-court','barangay-captain','merienda','lechon-queue','family-group-chat','road-detour','school-crossing','gas-station','neighbor-help','cousin-ride','halo-halo-stand','church-bell','town-plaza','market-discount','fiesta-banner','barangay-raffle','sukli-standoff','lolo-kwento','banderitas-bandits','pasalubong-math','gc-receipts','padala-package','kain-gauntlet','bangketa-barter','hermana-mayor','alikabok-alley','cr-emergency'];
+ok(DECK.length === 36, 'deck has ' + DECK.length + ' events');
 const ids = DECK.map(e => e.id);
 for (const t of TOPICS) ok(ids.includes(t), 'missing topic ' + t);
-ok(new Set(ids).size === 24, 'duplicate ids');
+ok(new Set(ids).size === 36, 'duplicate ids');
 ok(LANDMARKS[4] && LANDMARKS[9] && Object.keys(LANDMARKS).length === 2, 'landmarks not at legs 5 and 10');
 
 // 2. Effects ranges: resources in [-4,+3], time in [0,2] for choices; interludes small
