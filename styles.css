@@ -123,7 +123,26 @@ body {
 .game-hook { font-size: 18px; color: #ffe3c2; font-weight: 600; }
 .game-hint { font-size: 14px; color: rgba(255, 236, 210, 0.75); max-width: 300px; }
 
-.end-text { font-size: 16px; color: #ffe9d6; font-weight: 600; max-width: 320px; line-height: 1.4; }
+.end-kicker {
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 3px;
+}
+.end-kicker.won { color: #ffd43b; }
+.end-kicker.lost { color: rgba(255, 236, 210, 0.6); }
+
+.end-text { font-size: 15.5px; color: #ffe9d6; font-weight: 600; max-width: 320px; line-height: 1.4; }
+
+.end-epilogue {
+  font-size: 14px;
+  font-style: italic;
+  font-weight: 600;
+  color: #ffd8a8;
+  max-width: 310px;
+  line-height: 1.4;
+  border-top: 1px solid rgba(255, 212, 59, 0.35);
+  padding-top: 8px;
+}
 .end-sub { font-size: 14px; color: rgba(255, 236, 210, 0.8); }
 
 /* ---- score card ---- */
@@ -536,8 +555,10 @@ body {
   .game-title.small { font-size: 26px; }
   .passenger-emoji { font-size: 32px; }
   .passenger-card { padding: 11px 14px; }
-  #screen-title, #screen-end { gap: 10px; }
-  .end-text { font-size: 14px; }
+  #screen-title, #screen-end { gap: 8px; }
+  .end-text { font-size: 13.5px; }
+  .end-epilogue { font-size: 12.5px; padding-top: 5px; }
+  #screen-end .title-art { font-size: 40px; }
   .score-card { padding: 10px 16px 9px; gap: 3px; }
   #score-value { font-size: 38px; }
   .score-tier { font-size: 15px; }

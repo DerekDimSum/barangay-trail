@@ -99,6 +99,9 @@ for (let i = 0; i < 5000; i++) {
   }
   ok(run.outcome === 'win' || (run.outcome === 'lose' && run.deadResource), 'bad outcome');
   ok(run.outcome !== 'win' || RES_KEYS.every(k => run.res[k] > 0), 'won with a dead resource');
+  const ending = resolveEnding(run);
+  ok(!!ending, 'run resolved to no ending');
+  if (ending) ok((run.outcome === 'win') === !ending.id.match(/porch|quiet|supper|pamasahe|tanaw|makina/), 'ending outcome mismatch: ' + ending.id);
 }
 
 // 6. Stranded overrides win on the final leg; arrival time never fails you; win fires once
@@ -156,6 +159,60 @@ for (let i = 0; i < 500; i++) {
   const b = newRun(seeded(42));
   ok(a.passengerPair[0].id === b.passengerPair[0].id && a.passengerPair[1].id === b.passengerPair[1].id, 'passenger pair not seed-deterministic');
   ok(a.pool[0].id === b.pool[0].id, 'event order not seed-deterministic');
+}
+
+// 9b. Named endings (v0.3): every ending reachable and not shadowed by
+//     an earlier rule — constructed states must hit their exact id.
+{
+  const state = (outcome, res, extra = {}) => ({
+    outcome, res: { coins: 6, food: 6, fuel: 6, goodwill: 6, ...res },
+    hour: 22, stop: 10, deadResource: null, passenger: null, ...extra,
+  });
+  const CASES = [
+    ['no-porch-lights', state('lose', { goodwill: 0 }, { deadResource: 'goodwill', hour: 19 })],
+    ['group-chat-quiet', state('lose', { goodwill: 0 }, { deadResource: 'goodwill', hour: 14 })],
+    ['supper-retreat', state('lose', { food: 0 }, { deadResource: 'food' })],
+    ['no-pamasahe', state('lose', { coins: 0 }, { deadResource: 'coins' })],
+    ['tanaw-ang-fiesta', state('lose', { fuel: 0 }, { deadResource: 'fuel', stop: 9 })],
+    ['pahinga-makina', state('lose', { fuel: 0 }, { deadResource: 'fuel', stop: 4 })],
+    ['utang-na-loob-economy', state('win', { coins: 2, goodwill: 10 })],
+    ['solo-speedrun-villain', state('win', { goodwill: 4 }, { hour: 19 })],
+    ['auntie-proof', state('win', { food: 10, goodwill: 10 })],
+    ['one-biscuit-left', state('win', { food: 1 })],
+    ['broke-but-beloved', state('win', { coins: 3, goodwill: 9 })],
+    ['rich-walang-hatid', state('win', { coins: 10, goodwill: 4 })],
+    ['arrived-but', state('win', { goodwill: 4 })],
+    ['barangay-beloved', state('win', { goodwill: 11 })],
+    ['clean-run', state('win', { coins: 8, food: 8, fuel: 8, goodwill: 8 })],
+    ['fireworks-finish', state('win', { fuel: 5 }, { hour: 19 })],
+    ['last-dance-crew', state('win', { fuel: 5 }, { hour: 22 })],
+    ['dishwashing-committee', state('win', { fuel: 5 }, { hour: 25 })],
+  ];
+  ok(CASES.length === ENDINGS.length, 'ending coverage table out of sync: ' + CASES.length + ' vs ' + ENDINGS.length);
+  for (const [id, s] of CASES) {
+    const got = resolveEnding(s);
+    ok(got && got.id === id, 'ending ' + id + ' unreachable or shadowed (got ' + (got && got.id) + ')');
+  }
+  for (const e of ENDINGS) {
+    ok(e.id && e.name && e.emoji && e.text && e.share, 'ending ' + e.id + ' missing fields');
+    ok(e.text.length <= 160, 'ending ' + e.id + ' text too long for iPhone SE (' + e.text.length + ')');
+  }
+}
+
+// 9c. Passenger epilogues: both variants present on every passenger
+for (const p of PASSENGERS) {
+  ok(typeof p.epilogueWin === 'string' && p.epilogueWin.length > 0, p.id + ' missing epilogueWin');
+  ok(typeof p.epilogueLoss === 'string' && p.epilogueLoss.length > 0, p.id + ' missing epilogueLoss');
+  ok(p.epilogueWin.length <= 120 && p.epilogueLoss.length <= 120, p.id + ' epilogue too long');
+}
+{
+  const r = newRun();
+  ok(passengerEpilogue(r) === null, 'epilogue without passenger should be null');
+  r.passenger = PASSENGERS[0];
+  r.outcome = 'win';
+  ok(passengerEpilogue(r) === PASSENGERS[0].epilogueWin, 'win epilogue wrong');
+  r.outcome = 'lose';
+  ok(passengerEpilogue(r) === PASSENGERS[0].epilogueLoss, 'loss epilogue wrong');
 }
 
 // 10. Any win outscores any loss (50k runs); win tier floor holds

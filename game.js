@@ -78,11 +78,36 @@ const RES_META = {
    v0.2 = identity only — no passives, no stat changes. Each run offers
    2 of these 5 (drawn from the run's RNG stream); the player picks one. */
 const PASSENGERS = [
-  { id: 'tita-baby', name: 'Tita Baby', emoji: '👒', blurb: 'Knows everyone. Brings snacks. Will absolutely judge your choices.', tag: 'Social safety' },
-  { id: 'kuya-jun', name: 'Kuya Jun', emoji: '🧢', blurb: 'Has a cousin nearby. Somehow knows a shortcut.', tag: 'Diskarte route' },
-  { id: 'lola-cora', name: 'Lola Cora', emoji: '👵', blurb: 'Everyone respects her. Everyone also wants her to sit, eat, and rest.', tag: 'Respect route' },
-  { id: 'bunso-nico', name: 'Bunso Nico', emoji: '🧒', blurb: 'Small passenger. Big snack requirements.', tag: 'Cute chaos' },
-  { id: 'cousin-jessa', name: 'Cousin Jessa', emoji: '🤳', blurb: 'Already posting the journey. The barangay is watching.', tag: 'Receipts route' },
+  {
+    id: 'tita-baby', name: 'Tita Baby', emoji: '👒',
+    blurb: 'Knows everyone. Brings snacks. Will absolutely judge your choices.', tag: 'Social safety',
+    epilogueWin: 'Tita Baby steps out first, waves like she planned everything, and somehow everyone believes her.',
+    epilogueLoss: 'Tita Baby says “Okay lang,” in the tone that means this will be discussed later.',
+  },
+  {
+    id: 'kuya-jun', name: 'Kuya Jun', emoji: '🧢',
+    blurb: 'Has a cousin nearby. Somehow knows a shortcut.', tag: 'Diskarte route',
+    epilogueWin: 'Kuya Jun says the route was obvious. It was not obvious.',
+    epilogueLoss: 'Kuya Jun insists the shortcut was correct. The road respectfully disagrees.',
+  },
+  {
+    id: 'lola-cora', name: 'Lola Cora', emoji: '👵',
+    blurb: 'Everyone respects her. Everyone also wants her to sit, eat, and rest.', tag: 'Respect route',
+    epilogueWin: 'Lola Cora steps out and the whole plaza softens. Suddenly, you are forgiven for everything.',
+    epilogueLoss: 'Lola Cora says, “Okay lang, apo.” Somehow that makes it worse and better.',
+  },
+  {
+    id: 'bunso-nico', name: 'Bunso Nico', emoji: '🧒',
+    blurb: 'Small passenger. Big snack requirements.', tag: 'Cute chaos',
+    epilogueWin: 'Bunso Nico announces the journey was easy. He was asleep for half of it.',
+    epilogueLoss: 'Bunso Nico asks if the failed trip still includes snacks. Priorities remain strong.',
+  },
+  {
+    id: 'cousin-jessa', name: 'Cousin Jessa', emoji: '🤳',
+    blurb: 'Already posting the journey. The barangay is watching.', tag: 'Receipts route',
+    epilogueWin: 'Cousin Jessa posts the arrival before you even park. Caption already has sparkle emojis.',
+    epilogueLoss: 'Cousin Jessa says she will not post the failure. She is lying gently.',
+  },
 ];
 
 /* Declarative conditions: { res, atLeast?, atMost? }, { flag }, or
@@ -416,12 +441,125 @@ const LANDMARKS = {
 const COLD_LINE = '🥶 Malamig ang trato — with goodwill this low, people stop going the extra mile (bonuses reduced).';
 const NIGHT_LINE = '🌙 Gabi na — sarado na ang mga tindahan. Bonuses reduced... unless people love you.';
 
-const LOSE_LINES = {
-  coins: 'Naubos ang pera. Kahit pamasahe, wala na — the road home is long when your pockets are empty.',
-  food: 'Gutom na gutom. You cannot fiesta on an empty stomach, and the last biscuit is gone.',
-  fuel: 'The tank coughs, then silence. The fiesta lights twinkle sa malayo... too malayo.',
-  goodwill: 'Nobody waves back anymore. Sa barangay, goodwill ang totoong gasolina — and yours ran out.',
-};
+/* NAMED ENDINGS — every run resolves to exactly one story identity.
+   Order IS priority: first match wins. Losses first (mutually exclusive
+   with wins), then win rares → win specials → arrival-tier defaults.
+   The last win entry has no extra condition, so a fallback always
+   exists for both outcomes. Keep text ≤ 2 short lines for iPhone SE. */
+const ENDINGS = [
+  // ---- losses (by what ran out) ----
+  {
+    id: 'no-porch-lights', name: 'No Porch Lights', emoji: '🌑',
+    when: (r) => r.outcome === 'lose' && r.deadResource === 'goodwill' && timeBand(r.hour) === 'gabi',
+    text: 'Gabi na, and not one porch light turns on for you. The road home feels longer than the road there.',
+    share: 'Walang nag-iwan ng ilaw para sa akin 🥲',
+  },
+  {
+    id: 'group-chat-quiet', name: 'The Group Chat Went Quiet', emoji: '💬',
+    when: (r) => r.outcome === 'lose' && r.deadResource === 'goodwill',
+    text: 'You ask for a little help. People are typing... typing... Nothing sends. The silence has a message anyway.',
+    share: 'Seen-zoned ng buong barangay 💬',
+  },
+  {
+    id: 'supper-retreat', name: 'Supper Retreat', emoji: '🍽️',
+    when: (r) => r.outcome === 'lose' && r.deadResource === 'food',
+    text: 'You are too hungry to continue. The fiesta can wait — may kanin sa bahay, and honestly, tama naman. You turn back in time for supper.',
+    share: 'Umuwi para sa hapunan. Walang regrets. Konting regrets.',
+  },
+  {
+    id: 'no-pamasahe', name: 'No Pamasahe, No Problem?', emoji: '🪙',
+    when: (r) => r.outcome === 'lose' && r.deadResource === 'coins',
+    text: 'The wallet gives up before you do. No fare, no shortcut — just the long, character-building way home.',
+    share: 'Naubusan ng pamasahe. Character development daw.',
+  },
+  {
+    id: 'tanaw-ang-fiesta', name: 'Tanaw ang Fiesta', emoji: '🌆',
+    when: (r) => r.outcome === 'lose' && r.deadResource === 'fuel' && r.stop >= 8,
+    text: 'You can SEE the fiesta lights from here. The tank coughs once, twice, then nothing. So close it is basically heartbreak.',
+    share: 'Kita ko na ang fiesta. Kita lang. 💔',
+  },
+  {
+    id: 'pahinga-makina', name: 'Pahinga Muna, Makina', emoji: '🔧',
+    when: (r) => r.outcome === 'lose' && r.deadResource === 'fuel',
+    text: 'The trike taps out somewhere between barangays. You pat the hood like a tired kalabaw and wait for rescue.',
+    share: 'Nag-resign ang makina sa kalagitnaan 🔧',
+  },
+  // ---- win rares ----
+  {
+    id: 'utang-na-loob-economy', name: 'Utang na Loob Economy', emoji: '💛',
+    when: (r) => r.outcome === 'win' && r.res.coins <= 2 && r.res.goodwill >= 10,
+    text: 'You arrive broke and beloved. Every peso you gave away came back as helping hands — the wallet is empty, the sidecar is full.',
+    share: 'Zero pesos, infinite utang na loob 💛',
+  },
+  {
+    id: 'solo-speedrun-villain', name: 'Solo Speedrun Villain', emoji: '😈',
+    when: (r) => r.outcome === 'win' && r.hour < FIREWORKS_HOUR && r.res.goodwill <= 4,
+    text: 'Incredible time. The whole barangay watched you make it — nobody waves. The fireworks are great; malamig lang ang tanggap.',
+    share: 'Umabot ako. Ako lang talaga. 😈',
+  },
+  {
+    id: 'auntie-proof', name: 'Auntie-Proof', emoji: '🥘',
+    when: (r) => r.outcome === 'win' && r.res.food >= 9 && r.res.goodwill >= 10,
+    text: 'You arrive well-fed AND well-loved, which every tita at the fiesta finds personally suspicious. May baon ka pa.',
+    share: 'Busog, mahal ng bayan, may baon pa. Suspicious. 🥘',
+  },
+  // ---- win specials ----
+  {
+    id: 'broke-but-beloved', name: 'Broke but Beloved', emoji: '🫶',
+    when: (r) => r.outcome === 'win' && r.res.coins <= 3 && r.res.goodwill >= 9,
+    text: 'Empty pockets, full escort. Half the barangay walks you into the plaza like a parade of your own.',
+    share: 'Walang pera, pero maraming kasama 🫶',
+  },
+  {
+    id: 'rich-walang-hatid', name: 'Rich but Walang Hatid', emoji: '💸',
+    when: (r) => r.outcome === 'win' && r.res.coins >= 8 && r.res.goodwill <= 4,
+    text: 'You arrive with money intact and bridges lightly burned. Kayang bumili ng lechon, pero walang nagse-save ng upuan.',
+    share: 'May pera, walang naghihintay 💸',
+  },
+  {
+    id: 'arrived-but', name: 'Arrived, But…', emoji: '😬',
+    when: (r) => r.outcome === 'win' && r.res.goodwill <= 4,
+    text: 'You made it. Technically. The hellos are polite, the seats are “taken”, and someone definitely brought up the school crossing incident.',
+    share: 'Nakarating naman... pero may nag-uusap 😬',
+  },
+  {
+    id: 'barangay-beloved', name: 'Barangay Beloved', emoji: '👑',
+    when: (r) => r.outcome === 'win' && r.res.goodwill >= 11,
+    text: 'The plaza opens for you like family. Everyone you helped today is here — and every single one saved you a seat.',
+    share: 'Buong barangay, kakampi ko 👑',
+  },
+  {
+    id: 'clean-run', name: 'Clean Run', emoji: '✨',
+    when: (r) => r.outcome === 'win' && RES_KEYS.every((k) => r.res[k] >= 6),
+    text: 'Bars healthy, schedule met, zero utang. Suspiciously smooth. The titas want your secret; the titos claim credit.',
+    share: 'Clean run. Walang tanong. ✨',
+  },
+  {
+    id: 'one-biscuit-left', name: 'One Biscuit Left', emoji: '🍪',
+    when: (r) => r.outcome === 'win' && r.res.food === 1,
+    text: 'You roll in on fumes, barya, crumbs, at dasal. One biscuit stands between you and disaster. It has seen things.',
+    share: 'Survived with one (1) biscuit 🍪',
+  },
+  // ---- win defaults (arrival tier) ----
+  {
+    id: 'fireworks-finish', name: 'Fireworks Finish', emoji: '🎆',
+    when: (r) => r.outcome === 'win' && r.hour < FIREWORKS_HOUR,
+    text: 'You pull in just as the sky explodes. Perfect timing — everyone assumes you planned it. Sige, credit na ’yan.',
+    share: 'Sakto sa fireworks 🎆',
+  },
+  {
+    id: 'last-dance-crew', name: 'Last Dance Crew', emoji: '🪩',
+    when: (r) => r.outcome === 'win' && r.hour < LAST_DANCE_HOUR,
+    text: 'The fireworks are done, but the banda is still on. You arrive exactly in time for the good part: the dance floor.',
+    share: 'Late pero sakto sa last dance 🪩',
+  },
+  {
+    id: 'dishwashing-committee', name: 'Dishwashing Committee', emoji: '🧽',
+    when: (r) => r.outcome === 'win',
+    text: 'You arrive as the plates do. Welcome to the most honorable committee sa buong fiesta. Tita saved you lechon.',
+    share: 'Officially sa hugasan committee 🧽',
+  },
+];
 
 /* ------------------------------------------------------------------ */
 /* 2. GAME ENGINE — pure, DOM-free                                     */
@@ -662,6 +800,18 @@ function tierFor(score) {
   return SCORE_TIERS.find((t) => score >= t.min).name;
 }
 
+/* Every finished run maps to exactly one named ending (first match in
+   ENDINGS wins; the table guarantees a fallback for both outcomes). */
+function resolveEnding(run) {
+  return ENDINGS.find((e) => e.when(run));
+}
+
+/* The passenger's one-line coda for the ending screen and share card. */
+function passengerEpilogue(run) {
+  if (!run.passenger) return null;
+  return run.outcome === 'win' ? run.passenger.epilogueWin : run.passenger.epilogueLoss;
+}
+
 /* Percentiles of a 9,000-traveler simulated population (1/3 random,
    1/3 semi-careful, 1/3 greedy) — regenerate with `node game.js --dist`
    after any balance change. Index i = score at the i-th percentile. */
@@ -777,6 +927,27 @@ function runSimulation(runs = 1000) {
   return { random: rnd.winRate, greedy: grd.winRate };
 }
 
+/* Ending distribution across a mixed-skill population — the content
+   health check for the named-endings table (`node game.js --endings`):
+   every ending should fire, rares should stay rare. Not a balance tool. */
+function endingReport(n = 6000) {
+  const strategies = [
+    (run) => pickRandom(run),
+    (run) => (Math.random() < 0.65 ? pickGreedy(run) : pickRandom(run)),
+    (run) => pickGreedy(run),
+  ];
+  const counts = {};
+  for (let i = 0; i < n; i++) {
+    const run = playRun(strategies[i % strategies.length]);
+    const id = resolveEnding(run).id;
+    counts[id] = (counts[id] || 0) + 1;
+  }
+  const rows = ENDINGS.map((e) => [e.id, counts[e.id] || 0]);
+  rows.sort((a, b) => b[1] - a[1]);
+  console.log(`[Barangay Trail endings] ${n} mixed-skill runs`);
+  for (const [id, c] of rows) console.log(`  ${((100 * c) / n).toFixed(1).padStart(5)}%  ${id}${c === 0 ? '  ← NEVER FIRED' : ''}`);
+}
+
 /* Simulated-traveler population for the score percentile on the end
    screen: 1/3 random taps, 1/3 semi-careful, 1/3 greedy. */
 function generateScoreDistribution(n = 9000) {
@@ -807,9 +978,10 @@ if (IN_BROWSER) {
   const wantSim = window.SIM === true || new URLSearchParams(window.location.search).has('sim');
   if (wantSim) runSimulation();
 } else if (typeof process !== 'undefined') {
-  // `node game.js` — headless balance check; `--dist` regenerates
-  // the SCORE_PERCENTILES table after balance changes.
+  // `node game.js` — headless balance check; `--dist` regenerates the
+  // SCORE_PERCENTILES table; `--endings` prints the ending distribution.
   if (process.argv.includes('--dist')) console.log(JSON.stringify(generateScoreDistribution()));
+  else if (process.argv.includes('--endings')) endingReport();
   else runSimulation();
 }
 
@@ -959,7 +1131,8 @@ function initUI() {
     card.classList.add('interlude');
     card.classList.remove('landmark');
     $('ev-title').textContent = '🎆 Ang Pista';
-    $('ev-desc').textContent = 'You roll out at 6 AM — ten barangays between you and the fiesta. Every stop takes an hour; the kind choices take more. Dark falls at 5 PM and the road gets mean... unless people love you. Fireworks at 8. Keep every bar alive. Tara na!';
+    const who = run.passenger ? `Kasama mo si ${run.passenger.name} — ihatid mo siya nang buo. ` : '';
+    $('ev-desc').textContent = `You roll out at 6 AM — ten barangays between you and the fiesta. ${who}Every stop takes an hour; the kind choices take more. Dark falls at 5 PM and the road gets mean... unless people love you. Fireworks at 8. Keep every bar alive. Tara na!`;
     $('ev-chips').classList.add('hidden');
     $('ev-result').classList.add('hidden');
     $('ev-km').classList.add('hidden');
@@ -1124,18 +1297,17 @@ function initUI() {
     const pct = percentileFor(s.score);
     const tier = tierFor(s.score);
     const clock = formatHour(run.hour);
-    const early = run.hour < FIREWORKS_HOUR;
-    const dance = run.hour < LAST_DANCE_HOUR;
+    const ending = resolveEnding(run);
+    const epilogue = passengerEpilogue(run);
 
-    $('end-emoji').textContent = won ? (early ? '🎆🛺🎉' : '🌙🛺🎉') : '🌧️🛺💔';
-    $('end-title').textContent = won ? 'Nakarating ka sa Fiesta!' : 'Hindi umabot ang byahe...';
-    $('end-text').textContent = won
-      ? (early
-        ? `You rolled into the plaza at ${clock} — just as the first fireworks lit the sky. Grabe, lodi!`
-        : dance
-          ? `${clock}. The fireworks are done, but the banda is still playing — you caught the last dance!`
-          : `${clock}. The plates are being washed... pero tita saved you lechon. Salamat po talaga.`)
-      : LOSE_LINES[run.deadResource];
+    $('end-kicker').textContent = won ? 'NAKARATING KAYO 🎉' : 'HINDI NAKARATING 😮‍💨';
+    $('end-kicker').className = 'end-kicker ' + (won ? 'won' : 'lost');
+    $('end-emoji').textContent = ending.emoji;
+    $('end-title').textContent = ending.name;
+    $('end-text').textContent = ending.text;
+    const epEl = $('end-epilogue');
+    epEl.classList.toggle('hidden', !epilogue);
+    if (epilogue) epEl.textContent = epilogue;
 
     animateScore($('score-value'), s.score);
     $('score-tier').textContent = tier;
@@ -1145,10 +1317,10 @@ function initUI() {
 
     shareText = [
       '🛺 Barangay Trail: Road to Fiesta',
+      `${ending.emoji} ${ending.name} — ${ending.share}`,
       run.passenger ? `${run.passenger.emoji} Kasama: ${run.passenger.name}` : null,
-      `🏆 Fiesta Score: ${s.score.toLocaleString('en-US')} — ${tier}`,
-      `🏁 ${s.survived}/${TOTAL_STOPS} stops · ${won ? `arrived ${clock} ${early ? '🎆' : '🌙'}` : `stranded ${clock}`} · beat ~${pct}% of travelers`,
-      `🪙${run.res.coins} 🍚${run.res.food} ⛽${run.res.fuel} 💛${run.res.goodwill}`,
+      `🏆 Fiesta Score: ${s.score.toLocaleString('en-US')} — ${tier} · beat ~${pct}% of travelers`,
+      `${s.survived}/${TOTAL_STOPS} stops · ${won ? `arrived ${clock}` : `stranded ${clock}`} · 🪙${run.res.coins} 🍚${run.res.food} ⛽${run.res.fuel} 💛${run.res.goodwill}`,
       'Kaya mo ba? 🎉',
     ].filter(Boolean).join('\n');
     const shareBtn = $('btn-share');
