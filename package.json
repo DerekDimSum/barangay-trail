@@ -1,0 +1,19 @@
+{
+  "name": "barangay-trail",
+  "version": "1.0.0",
+  "description": "Barangay Trail: Road to Fiesta - A Filipino-themed trail game",
+  "type": "module",
+  "scripts": {
+    "test": "node test.mjs"
+  },
+  "keywords": [
+    "game",
+    "filipino",
+    "barangay"
+  ],
+  "author": "Dim Sum Games",
+  "license": "ISC",
+  "dependencies": {
+    "@vercel/analytics": "^2.0.1"
+  }
+}
